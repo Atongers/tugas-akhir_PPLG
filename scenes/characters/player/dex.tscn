@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://drqqbv512e3dq"]
+
+[ext_resource type="Script" uid="uid://djacw236bap1y" path="res://scripts/characters/dex_controller.gd" id="1_byf2i"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gjwiw"]
+size = Vector2(36, 72)
+
+[node name="Dex" type="CharacterBody2D" unique_id=1468186972]
+script = ExtResource("1_byf2i")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=399553752]
+scale = Vector2(3, 3)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2069727714]
+position = Vector2(0, -36)
+shape = SubResource("RectangleShape2D_gjwiw")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=250641190]
+position_smoothing_enabled = true
