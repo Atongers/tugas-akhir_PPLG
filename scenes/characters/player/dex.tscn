@@ -2,18 +2,22 @@
 
 [ext_resource type="Script" uid="uid://djacw236bap1y" path="res://scripts/characters/dex_controller.gd" id="1_byf2i"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_gjwiw"]
-size = Vector2(36, 72)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_byf2i"]
+size = Vector2(12, 24)
 
 [node name="Dex" type="CharacterBody2D" unique_id=1468186972]
 script = ExtResource("1_byf2i")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=399553752]
-scale = Vector2(3, 3)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2069727714]
-position = Vector2(0, -36)
-shape = SubResource("RectangleShape2D_gjwiw")
+position = Vector2(0, -12)
+shape = SubResource("RectangleShape2D_byf2i")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=250641190]
+zoom = Vector2(2.2, 2.2)
+limit_left = 0
+limit_top = 0
+limit_right = 784
+limit_bottom = 432
 position_smoothing_enabled = true

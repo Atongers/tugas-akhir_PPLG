@@ -10,11 +10,11 @@ const FRAME_HEIGHT: int = 32
 const WALK_FRAME_COUNT: int = 8
 
 @export_group("Movement Physics")
-@export var move_speed: float = 240.0
-@export var acceleration: float = 1200.0
-@export var friction: float = 1400.0
-@export var jump_velocity: float = -460.0
-@export var gravity_scale: float = 1.0
+@export var move_speed: float = 95.0
+@export var acceleration: float = 600.0
+@export var friction: float = 700.0
+@export var jump_velocity: float = -215.0
+@export var gravity_scale: float = 0.62
 @export var coyote_time: float = 0.12
 @export var jump_buffer_time: float = 0.12
 
@@ -71,8 +71,8 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_update_animation(direction)
 
-	# Safe respawn at checkpoint if falling into a pit (GDD: Gagal itu aman)
-	if global_position.y > 750.0:
+	# Safe respawn at checkpoint if falling out of bounds
+	if global_position.y > 500.0:
 		respawn_at_checkpoint()
 
 
