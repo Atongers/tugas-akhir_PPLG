@@ -256,6 +256,18 @@ func _setup_hud_extras() -> void:
 		_hud_bug_log_btn.pressed.connect(func() -> void: _toggle_bug_log_modal(false))
 		hbox.add_child(_hud_bug_log_btn)
 
+	var sep2 := VSeparator.new()
+	hbox.add_child(sep2)
+
+	var menu_btn := Button.new()
+	menu_btn.name = "MenuBtn"
+	menu_btn.text = "Menu Utama"
+	menu_btn.add_theme_font_size_override("font_size", 12)
+	menu_btn.pressed.connect(func() -> void:
+		get_tree().change_scene_to_file("res://scenes/ui/menu/main_menu.tscn")
+	)
+	hbox.add_child(menu_btn)
+
 	_build_bug_log_modal()
 
 
