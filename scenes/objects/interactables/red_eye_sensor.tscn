@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/objects/red_eye_sensor.gd" id="1_eye"]
+
+[node name="RedEyeSensor" type="Node2D"]
+script = ExtResource("1_eye")

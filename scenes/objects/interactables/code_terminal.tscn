@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/objects/code_terminal.gd" id="1_term"]
+
+[node name="CodeTerminal" type="Area2D"]
+script = ExtResource("1_term")
