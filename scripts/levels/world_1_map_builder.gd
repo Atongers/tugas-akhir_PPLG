@@ -4,6 +4,127 @@ extends Node2D
 const TILESET_PATH := "res://resources/tilesets/world_1_tileset.tres"
 const BUBBLE_HELO_PATH := "res://assets/ui/bubble_helo_dave.png"
 const DEX_SPAWN_POS := Vector2(579.0, 96.0)
+const TOTAL_TERMINALS := 4
+
+const TERMINAL_CONFIGS := {
+	"Terminal_1": {
+		"title": "TERMINAL 1: LASER KEAMANAN KORIDOR ATAS",
+		"objective": "Perbaiki NameError pada fungsi cetak dan matikan Laser Oranye (kode_akses = 101).",
+		"initial_code": [
+			"status_laser = \"STANDBY\"",
+			"kode_akses = 101",
+			"prin(status_laser)",
+			"matikan_laser_oranye(kode_akses)"
+		],
+		"locked_lines": [0, 1, 3],
+		"required_call": "matikan_laser_oranye",
+		"expected_arg": 101,
+		"require_print": true,
+		"expected_print": "STANDBY",
+		"logical_fail_hint": "Pastikan fungsi print(status_laser) terpanggil sebelum matikan_laser_oranye(kode_akses).",
+		"success_message": "Laser Oranye Koridor Atas dinonaktifkan! Jalan menuju sektor kiri terbuka.",
+		"hints": [
+			"Lint: \"Lihat baris ke-3! Ada typo pada nama fungsi untuk mencetak teks ke layar.\"",
+			"Lint: \"Di Python, fungsi untuk menampilkan output ke konsol adalah print(...), bukan prin(...).\"",
+			"Lint: \"Ubah baris ke-3 menjadi: print(status_laser)\""
+		],
+		"bug_log_entry": {
+			"terminal_id": "Terminal_1",
+			"bug_type": "NameError (Typo Nama Fungsi)",
+			"broken_code": "prin(status_laser)",
+			"fixed_code": "print(status_laser)",
+			"explanation": "NameError muncul ketika Python tidak mengenali nama fungsi atau variabel karena salah ketik (typo). Fungsi bawaan Python untuk mencetak ke layar adalah print()."
+		}
+	},
+	"Terminal_2": {
+		"title": "TERMINAL 2: GENERATOR ELEVATOR SEKTOR KIRI",
+		"objective": "Perbaiki TypeError agar total_daya bernilai 100 untuk mengaktifkan Elevator.",
+		"initial_code": [
+			"daya_awal = \"60\"",
+			"daya_tambahan = 40",
+			"total_daya = daya_awal + daya_tambahan",
+			"aktifkan_elevator(total_daya)"
+		],
+		"locked_lines": [1, 2, 3],
+		"required_call": "aktifkan_elevator",
+		"expected_arg": 100,
+		"require_print": false,
+		"expected_print": "",
+		"logical_fail_hint": "Elevator membutuhkan total_daya tepat sebesar 100 (integer), bukan nilai lain.",
+		"success_message": "Generator Elevator menyala (100W)! Platform Elevator di kiri sekarang aktif bergerak.",
+		"hints": [
+			"Lint: \"Perhatikan baris 1! Mengapa angka 60 dibungkus tanda kutip?\"",
+			"Lint: \"Tanda kutip membuat \"60\" menjadi teks (str), sehingga tidak bisa dijumlahkan dengan angka 40 (int).\"",
+			"Lint: \"Hapus tanda kutip pada baris 1 sehingga menjadi: daya_awal = 60\""
+		],
+		"bug_log_entry": {
+			"terminal_id": "Terminal_2",
+			"bug_type": "TypeError (String + Integer)",
+			"broken_code": "daya_awal = \"60\"",
+			"fixed_code": "daya_awal = 60",
+			"explanation": "TypeError terjadi saat kita menjumlahkan teks (str) dengan angka bulat (int). Angka yang akan dihitung secara matematis tidak boleh memakai tanda kutip."
+		}
+	},
+	"Terminal_3": {
+		"title": "TERMINAL 3: REGULATOR TEGANGAN LASER BIRU",
+		"objective": "Perbaiki operator aritmetika agar sisa_tegangan bernilai 0 untuk mematikan kedua Laser Biru.",
+		"initial_code": [
+			"tegangan_awal = 50",
+			"pengurang = 50",
+			"sisa_tegangan = tegangan_awal + pengurang",
+			"set_tegangan_laser_biru(sisa_tegangan)"
+		],
+		"locked_lines": [0, 1, 3],
+		"required_call": "set_tegangan_laser_biru",
+		"expected_arg": 0,
+		"require_print": false,
+		"expected_print": "",
+		"logical_fail_hint": "Kode berjalan tanpa error, tetapi sisa_tegangan bernilai 100V! Kita butuh 0V untuk mematikan laser.",
+		"success_message": "Tegangan Laser Biru berhasil diturunkan ke 0V! Kedua penghalang Laser Biru telah mati.",
+		"hints": [
+			"Lint: \"Program ini tidak menghasilkan pesan error, tapi lihat hasil perhitungannya!\"",
+			"Lint: \"Pada baris 3, tegangan_awal justru ditambah (+) dengan pengurang sehingga menjadi 100.\"",
+			"Lint: \"Ganti tanda + menjadi - pada baris 3: sisa_tegangan = tegangan_awal - pengurang\""
+		],
+		"bug_log_entry": {
+			"terminal_id": "Terminal_3",
+			"bug_type": "Logical Bug (Salah Operator Aritmetika)",
+			"broken_code": "sisa_tegangan = tegangan_awal + pengurang",
+			"fixed_code": "sisa_tegangan = tegangan_awal - pengurang",
+			"explanation": "Logical Bug tidak memunculkan pesan error, tetapi menghasilkan nilai yang salah karena kesalahan rumus/operator (+ seharusnya -)."
+		}
+	},
+	"Terminal_4": {
+		"title": "TERMINAL 4: OTORISASI GERBANG EXIT & CRANE",
+		"objective": "Perbaiki rumus luas persegi (5 x 5 = 25) untuk membebaskan Robot & membuka Exit Gate.",
+		"initial_code": [
+			"panjang = 5",
+			"lebar = 5",
+			"kunci_gerbang = panjang * lebar - 10",
+			"print(kunci_gerbang)",
+			"buka_gerbang_exit(kunci_gerbang)"
+		],
+		"locked_lines": [0, 1, 3, 4],
+		"required_call": "buka_gerbang_exit",
+		"expected_arg": 25,
+		"require_print": true,
+		"expected_print": "25",
+		"logical_fail_hint": "Gerbang membutuhkan kode luas persegi utuh (5 * 5 = 25). Mengapa masih dikurangi 10?",
+		"success_message": "Otorisasi Gerbang Exit diterima (Kode: 25)! Capit Crane melepaskan robot dan Gerbang Exit terbuka!",
+		"hints": [
+			"Lint: \"Lihat baris ke-3! Rumus kunci_gerbang seharusnya hanya panjang dikali lebar.\"",
+			"Lint: \"Saat ini hasilnya 5 * 5 - 10 = 15, padahal Gerbang Exit meminta nilai 25.\"",
+			"Lint: \"Hapus '- 10' pada baris 3 sehingga menjadi: kunci_gerbang = panjang * lebar\""
+		],
+		"bug_log_entry": {
+			"terminal_id": "Terminal_4",
+			"bug_type": "Logical Bug (Kesalahan Rumus Perhitungan)",
+			"broken_code": "kunci_gerbang = panjang * lebar - 10",
+			"fixed_code": "kunci_gerbang = panjang * lebar",
+			"explanation": "Operasi yang tidak diperlukan (- 10) pada rumus menyebabkan output menjadi 15 alih-alih 25 yang diminta sistem."
+		}
+	}
+}
 
 @export var rebuild_map_now: bool = false:
 	set(_value):
@@ -16,9 +137,19 @@ const DEX_SPAWN_POS := Vector2(579.0, 96.0)
 @onready var props_layer: TileMapLayer = get_node_or_null("PropsLayer")
 @onready var overview_cam: Camera2D = get_node_or_null("OverviewCamera")
 @onready var hud_status: Label = get_node_or_null("HUD/TopBar/Margin/HBox/StatusLabel")
+@onready var terminal_overlay: Node = get_node_or_null("TerminalOverlay")
 
 var _is_overview_cam: bool = true
 var _bubble_helo_sprite: Sprite2D = null
+var _solved_terminals: Dictionary = {}
+var _bug_log_entries: Array[Dictionary] = []
+var _hud_progress_label: Label = null
+var _hud_bug_log_btn: Button = null
+var _bug_log_modal: PanelContainer = null
+var _bug_log_vbox: VBoxContainer = null
+var _bug_log_title: Label = null
+var _bug_log_subtitle: Label = null
+var _level_completed: bool = false
 
 
 func _ready() -> void:
@@ -35,8 +166,11 @@ func _process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if Engine.is_editor_hint():
 		return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB:
-		_toggle_camera_mode()
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_TAB:
+			_toggle_camera_mode()
+		elif event.keycode == KEY_L:
+			_toggle_bug_log_modal(false)
 
 
 func _toggle_camera_mode() -> void:
@@ -61,6 +195,203 @@ func _setup_runtime() -> void:
 	var dex_cam: Camera2D = dex.get_node_or_null("Camera2D") if dex else null
 	if dex_cam:
 		dex_cam.enabled = false
+
+	# Initial puzzle states at runtime:
+	# Elevator starts inactive until Terminal_2 is solved!
+	var elev: Node = get_node_or_null("Programmable/ElevatorPlatform")
+	if elev and elev.has_method("set_active"):
+		elev.call("set_active", false)
+
+	var exit_gate: Node = get_node_or_null("Interactables/ExitGate")
+	if exit_gate:
+		if exit_gate.has_method("set_unlocked"):
+			exit_gate.call("set_unlocked", false)
+		if exit_gate.has_signal("level_completed") and not exit_gate.level_completed.is_connected(_on_level_completed):
+			exit_gate.level_completed.connect(_on_level_completed)
+
+	if not terminal_overlay:
+		terminal_overlay = get_node_or_null("TerminalOverlay")
+	if terminal_overlay:
+		if terminal_overlay.has_signal("level_action_triggered") and not terminal_overlay.level_action_triggered.is_connected(_on_level_action_triggered):
+			terminal_overlay.level_action_triggered.connect(_on_level_action_triggered)
+		if terminal_overlay.has_signal("terminal_solved") and not terminal_overlay.terminal_solved.is_connected(_on_terminal_solved):
+			terminal_overlay.terminal_solved.connect(_on_terminal_solved)
+		if terminal_overlay.has_signal("terminal_closed") and not terminal_overlay.terminal_closed.is_connected(_on_terminal_closed):
+			terminal_overlay.terminal_closed.connect(_on_terminal_closed)
+
+	_setup_hud_extras()
+	_update_hud_display("Misi 1: Dekati Terminal 1 di kiri koridor atas dan tekan [E]")
+
+
+func _setup_hud_extras() -> void:
+	var hbox: HBoxContainer = get_node_or_null("HUD/TopBar/Margin/HBox")
+	if not hbox:
+		return
+	var top_bar: PanelContainer = get_node_or_null("HUD/TopBar")
+	if top_bar:
+		top_bar.offset_left = 10.0
+		top_bar.offset_top = 6.0
+		top_bar.offset_right = 1142.0
+		top_bar.offset_bottom = 40.0
+
+	if hud_status:
+		hud_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hud_status.add_theme_font_size_override("font_size", 13)
+
+	if not _hud_progress_label:
+		_hud_progress_label = Label.new()
+		_hud_progress_label.name = "ProgressLabel"
+		_hud_progress_label.add_theme_font_size_override("font_size", 13)
+		_hud_progress_label.add_theme_color_override("font_color", Color(0.45, 0.9, 1.0))
+		hbox.add_child(_hud_progress_label)
+
+	var sep := VSeparator.new()
+	hbox.add_child(sep)
+
+	if not _hud_bug_log_btn:
+		_hud_bug_log_btn = Button.new()
+		_hud_bug_log_btn.name = "BugLogBtn"
+		_hud_bug_log_btn.text = "Bug Log (0/4) [L]"
+		_hud_bug_log_btn.add_theme_font_size_override("font_size", 12)
+		_hud_bug_log_btn.pressed.connect(func() -> void: _toggle_bug_log_modal(false))
+		hbox.add_child(_hud_bug_log_btn)
+
+	_build_bug_log_modal()
+
+
+func _build_bug_log_modal() -> void:
+	var hud_layer: CanvasLayer = get_node_or_null("HUD")
+	if not hud_layer or _bug_log_modal:
+		return
+
+	_bug_log_modal = PanelContainer.new()
+	_bug_log_modal.name = "BugLogModal"
+	_bug_log_modal.visible = false
+	_bug_log_modal.set_anchors_preset(Control.PRESET_CENTER)
+	_bug_log_modal.custom_minimum_size = Vector2(760, 440)
+	_bug_log_modal.offset_left = -380.0
+	_bug_log_modal.offset_top = -220.0
+	_bug_log_modal.offset_right = 380.0
+	_bug_log_modal.offset_bottom = 220.0
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.1, 0.14, 0.98)
+	style.border_color = Color(0.3, 0.85, 1.0, 0.9)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(8)
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 14
+	style.content_margin_bottom = 14
+	_bug_log_modal.add_theme_stylebox_override("panel", style)
+	hud_layer.add_child(_bug_log_modal)
+
+	var outer_vbox := VBoxContainer.new()
+	outer_vbox.add_theme_constant_override("separation", 10)
+	_bug_log_modal.add_child(outer_vbox)
+
+	_bug_log_title = Label.new()
+	_bug_log_title.text = "BUG LOG — DUNIA 1: SYNTAX SHORE"
+	_bug_log_title.add_theme_font_size_override("font_size", 18)
+	_bug_log_title.add_theme_color_override("font_color", Color(0.35, 0.95, 0.65))
+	outer_vbox.add_child(_bug_log_title)
+
+	_bug_log_subtitle = Label.new()
+	_bug_log_subtitle.text = "Catatan seluruh bug Python yang telah kamu perbaiki bersama Lint:"
+	_bug_log_subtitle.add_theme_font_size_override("font_size", 13)
+	_bug_log_subtitle.add_theme_color_override("font_color", Color(0.8, 0.86, 0.95))
+	outer_vbox.add_child(_bug_log_subtitle)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer_vbox.add_child(scroll)
+
+	_bug_log_vbox = VBoxContainer.new()
+	_bug_log_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bug_log_vbox.add_theme_constant_override("separation", 8)
+	scroll.add_child(_bug_log_vbox)
+
+	var close_btn := Button.new()
+	close_btn.text = "Tutup [L / Esc]"
+	close_btn.custom_minimum_size = Vector2(160, 34)
+	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	close_btn.pressed.connect(func() -> void: _bug_log_modal.visible = false)
+	outer_vbox.add_child(close_btn)
+
+
+func _toggle_bug_log_modal(is_level_clear: bool) -> void:
+	if not _bug_log_modal:
+		return
+	if _bug_log_modal.visible and not is_level_clear:
+		_bug_log_modal.visible = false
+		return
+
+	if is_level_clear:
+		_bug_log_title.text = "LEVEL 1 SELESAI! — DUNIA 1: SYNTAX SHORE"
+		_bug_log_subtitle.text = "Selamat! Dex & Lint berhasil memperbaiki semua 4 Terminal dan membuka Gerbang Exit! Berikut ringkasan Bug Log:"
+	else:
+		_bug_log_title.text = "BUG LOG — DUNIA 1: SYNTAX SHORE (%d/%d)" % [_solved_terminals.size(), TOTAL_TERMINALS]
+		_bug_log_subtitle.text = "Catatan bug Python yang telah diperbaiki sejauh ini:"
+
+	for child in _bug_log_vbox.get_children():
+		_bug_log_vbox.remove_child(child)
+		child.queue_free()
+
+	if _bug_log_entries.is_empty():
+		var empty_lbl := Label.new()
+		empty_lbl.text = "Belum ada bug yang tercatat. Perbaiki kode di Terminal [E] untuk mengisi Bug Log!"
+		empty_lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.82))
+		_bug_log_vbox.add_child(empty_lbl)
+	else:
+		for entry in _bug_log_entries:
+			var card := PanelContainer.new()
+			var c_style := StyleBoxFlat.new()
+			c_style.bg_color = Color(0.12, 0.15, 0.2, 1.0)
+			c_style.border_color = Color(0.25, 0.55, 0.75, 0.8)
+			c_style.set_border_width_all(1)
+			c_style.set_corner_radius_all(5)
+			c_style.content_margin_left = 10
+			c_style.content_margin_right = 10
+			c_style.content_margin_top = 8
+			c_style.content_margin_bottom = 8
+			card.add_theme_stylebox_override("panel", c_style)
+
+			var cv := VBoxContainer.new()
+			cv.add_theme_constant_override("separation", 3)
+			card.add_child(cv)
+
+			var h_lbl := Label.new()
+			h_lbl.text = "[%s] %s" % [entry.get("terminal_id", ""), entry.get("bug_type", "")]
+			h_lbl.add_theme_font_size_override("font_size", 13)
+			h_lbl.add_theme_color_override("font_color", Color(1.0, 0.84, 0.35))
+			cv.add_child(h_lbl)
+
+			var diff_lbl := Label.new()
+			diff_lbl.text = "Salah : %s\nBenar : %s" % [entry.get("broken_code", ""), entry.get("fixed_code", "")]
+			diff_lbl.add_theme_font_size_override("font_size", 12)
+			diff_lbl.add_theme_color_override("font_color", Color(0.6, 0.95, 0.7))
+			cv.add_child(diff_lbl)
+
+			var exp_lbl := Label.new()
+			exp_lbl.text = "Penjelasan: " + String(entry.get("explanation", ""))
+			exp_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			exp_lbl.add_theme_font_size_override("font_size", 12)
+			exp_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.96))
+			cv.add_child(exp_lbl)
+
+			_bug_log_vbox.add_child(card)
+
+	_bug_log_modal.visible = true
+
+
+func _update_hud_display(objective_text: String = "") -> void:
+	if hud_status and not objective_text.is_empty():
+		hud_status.text = objective_text
+	var solved_count: int = _solved_terminals.size()
+	if _hud_progress_label:
+		_hud_progress_label.text = "Terminal: %d/%d | [Tab] Kamera" % [solved_count, TOTAL_TERMINALS]
+	if _hud_bug_log_btn:
+		_hud_bug_log_btn.text = "Bug Log (%d/%d) [L]" % [solved_count, TOTAL_TERMINALS]
 
 
 func _build_all() -> void:
@@ -117,10 +448,84 @@ func _setup_terminals() -> void:
 
 
 func _on_terminal_interacted(terminal: Node) -> void:
+	var t_id: String = terminal.get("terminal_id") if "terminal_id" in terminal else terminal.name
+	if not TERMINAL_CONFIGS.has(t_id):
+		return
+	if dex:
+		dex.controls_enabled = false
+		dex.velocity = Vector2.ZERO
+		# Update checkpoint to latest visited terminal
+		dex.checkpoint_position = terminal.global_position + Vector2(0.0, -8.0)
+
+	if not terminal_overlay:
+		terminal_overlay = get_node_or_null("TerminalOverlay")
+	if terminal_overlay and terminal_overlay.has_method("open_terminal"):
+		terminal_overlay.call("open_terminal", t_id, TERMINAL_CONFIGS[t_id], TOTAL_TERMINALS)
+
+
+func _on_terminal_closed() -> void:
+	if dex:
+		dex.controls_enabled = true
+
+
+func _on_level_action_triggered(action_name: String, arg_value: Variant) -> void:
+	match action_name:
+		"matikan_laser_oranye":
+			if typeof(arg_value) == TYPE_INT and int(arg_value) == 101:
+				var laser_o: Node = get_node_or_null("Programmable/LaserOrange_Top")
+				if laser_o and laser_o.has_method("set_active"):
+					laser_o.call("set_active", false)
+		"aktifkan_elevator":
+			if typeof(arg_value) == TYPE_INT and int(arg_value) == 100:
+				var elev: Node = get_node_or_null("Programmable/ElevatorPlatform")
+				if elev and elev.has_method("set_active"):
+					elev.call("set_active", true)
+		"set_tegangan_laser_biru":
+			if typeof(arg_value) == TYPE_INT and int(arg_value) == 0:
+				var lb_v: Node = get_node_or_null("Programmable/LaserBlue_Vert")
+				var lb_h: Node = get_node_or_null("Programmable/LaserBlue_Horiz")
+				if lb_v and lb_v.has_method("set_active"):
+					lb_v.call("set_active", false)
+				if lb_h and lb_h.has_method("set_active"):
+					lb_h.call("set_active", false)
+		"buka_gerbang_exit":
+			if typeof(arg_value) == TYPE_INT and int(arg_value) == 25:
+				var crane: Node = get_node_or_null("Programmable/CraneClaw")
+				if crane and crane.has_method("release_robot"):
+					crane.call("release_robot")
+				var exit_gate: Node = get_node_or_null("Interactables/ExitGate")
+				if exit_gate and exit_gate.has_method("set_unlocked"):
+					exit_gate.call("set_unlocked", true)
+
+
+func _on_terminal_solved(terminal_id: String, bug_log_entry: Dictionary) -> void:
+	if not _solved_terminals.has(terminal_id):
+		_solved_terminals[terminal_id] = true
+		if not bug_log_entry.is_empty():
+			_bug_log_entries.append(bug_log_entry)
+
+	var next_msg := ""
+	match terminal_id:
+		"Terminal_1":
+			next_msg = "Laser Oranye mati! Lanjut ke kiri menuju Terminal 2 untuk menyalakan Elevator."
+		"Terminal_2":
+			next_msg = "Elevator aktif! Turun dan lompat ke Terminal 3 (monitor gantung tengah)."
+		"Terminal_3":
+			next_msg = "Laser Biru mati! Naik ke platform kanan menuju Terminal 4 untuk membuka Exit Gate."
+		"Terminal_4":
+			next_msg = "Gerbang Exit terbuka & Robot bebas! Turun ke pit kanan (EXIT) untuk menyelesaikan Level 1!"
+
+	_update_hud_display(next_msg)
 	if hud_status:
-		var t_id: String = terminal.get("terminal_id") if "terminal_id" in terminal else terminal.name
-		hud_status.text = "Membuka " + t_id + " (Tekan Tab untuk ganti kamera)"
-		hud_status.modulate = Color(0.4, 1.0, 0.55)
+		hud_status.modulate = Color(0.4, 1.0, 0.6)
+
+
+func _on_level_completed() -> void:
+	if _level_completed:
+		return
+	_level_completed = true
+	_update_hud_display("SELAMAT! Level 1: Syntax Shore berhasil diselesaikan!")
+	_toggle_bug_log_modal(true)
 
 
 func _configure_tileset_collisions(ts: TileSet) -> void:
@@ -272,7 +677,7 @@ func _populate_bg_layer(layer: TileMapLayer) -> void:
 			var ty: int = 11 + ((y - y1) % 3)
 			layer.set_cell(Vector2i(px, y), 0, Vector2i(5, ty))
 
-	# Hanging ceiling wires & brackets (Elevator cables, Crane cable, and Hanging Monitor cable are owned by their reusable components!)
+	# Hanging ceiling wires & brackets
 	layer.set_cell(Vector2i(21, 3), 0, Vector2i(0, 10))
 	layer.set_cell(Vector2i(22, 3), 0, Vector2i(1, 10))
 	layer.set_cell(Vector2i(26, 3), 0, Vector2i(0, 10))
@@ -383,6 +788,22 @@ func _populate_terrain_layer(layer: TileMapLayer) -> void:
 	layer.set_cell(Vector2i(38, 11), 0, Vector2i(8, 3))
 	layer.set_cell(Vector2i(39, 11), 0, Vector2i(9, 3))
 
+	# Helper stepping platforms so Dex can smoothly traverse all floors & pits
+	layer.set_cell(Vector2i(19, 14), 0, Vector2i(7, 2))
+	layer.set_cell(Vector2i(20, 14), 0, Vector2i(9, 2))
+	layer.set_cell(Vector2i(12, 17), 0, Vector2i(7, 2))
+	layer.set_cell(Vector2i(13, 17), 0, Vector2i(9, 2))
+	layer.set_cell(Vector2i(35, 17), 0, Vector2i(7, 3))
+	layer.set_cell(Vector2i(36, 17), 0, Vector2i(9, 3))
+	layer.set_cell(Vector2i(35, 15), 0, Vector2i(7, 3))
+	layer.set_cell(Vector2i(36, 15), 0, Vector2i(9, 3))
+	layer.set_cell(Vector2i(39, 13), 0, Vector2i(7, 3))
+	layer.set_cell(Vector2i(40, 13), 0, Vector2i(9, 3))
+	layer.set_cell(Vector2i(19, 21), 0, Vector2i(7, 2))
+	layer.set_cell(Vector2i(20, 21), 0, Vector2i(9, 2))
+	layer.set_cell(Vector2i(19, 23), 0, Vector2i(7, 2))
+	layer.set_cell(Vector2i(20, 23), 0, Vector2i(9, 2))
+
 	layer.set_cell(Vector2i(43, 7), 0, Vector2i(0, 7))
 	for y in range(7, 10):
 		var ty := y - 6
@@ -487,6 +908,6 @@ func _populate_terrain_layer(layer: TileMapLayer) -> void:
 
 func _populate_props_layer(layer: TileMapLayer) -> void:
 	layer.clear()
-	# Orange floor pad in right pit (all other interactive/programmable props are reusable PackedScene instances!)
+	# Orange floor pad in right pit
 	layer.set_cell(Vector2i(39, 20), 0, Vector2i(7, 10))
 	layer.set_cell(Vector2i(40, 20), 0, Vector2i(9, 10))

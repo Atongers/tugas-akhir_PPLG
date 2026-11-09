@@ -62,12 +62,7 @@ func _process(_delta: float) -> void:
 	if step != _last_step:
 		_last_step = step
 		_apply_step(step)
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if Engine.is_editor_hint():
-		return
-	if _player_in_range and event.is_action_pressed("interact"):
+	if not Engine.is_editor_hint() and _player_in_range and Input.is_action_just_pressed("interact"):
 		terminal_interacted.emit(self)
 
 
