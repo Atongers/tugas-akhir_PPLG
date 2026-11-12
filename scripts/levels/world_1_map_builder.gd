@@ -264,7 +264,7 @@ func _setup_hud_extras() -> void:
 	menu_btn.text = "Menu Utama"
 	menu_btn.add_theme_font_size_override("font_size", 12)
 	menu_btn.pressed.connect(func() -> void:
-		get_tree().change_scene_to_file("res://scenes/ui/menu/main_menu.tscn")
+		get_tree().change_scene_to_file("res://scenes/ui/menus/main_menu.tscn")
 	)
 	hbox.add_child(menu_btn)
 

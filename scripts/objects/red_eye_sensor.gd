@@ -2,7 +2,7 @@
 extends Node2D
 class_name RedEyeSensor
 
-const TILESET_PNG_PATH := "res://resources/tilesets/tileset.png"
+const TILESET_PNG_PATH := "res://assets/tilesets/tileset.png"
 const EYE_TX := [7, 8, 9, 8, 7, 8, 9, 8]
 
 @export var is_active: bool = true:

@@ -2,7 +2,7 @@
 extends StaticBody2D
 class_name CompanionCrate
 
-const TILESET_PNG_PATH := "res://resources/tilesets/tileset.png"
+const TILESET_PNG_PATH := "res://assets/tilesets/tileset.png"
 
 @export_enum("Plain:0", "OrangeCore:1", "BlueCore:2") var crate_variant: int = 0:
 	set(v):

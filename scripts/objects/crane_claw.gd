@@ -2,7 +2,7 @@
 extends Node2D
 class_name CraneClaw
 
-const TILESET_PNG_PATH := "res://resources/tilesets/tileset.png"
+const TILESET_PNG_PATH := "res://assets/tilesets/tileset.png"
 const CHAR_SHEET_PATH := "res://assets/sprites/characters/characters.png"
 
 const CLAW_Y_OFFSETS: Array[float] = [-16.0, -19.0, -22.0, -23.0, -20.0, -17.0, -14.0, -12.0]

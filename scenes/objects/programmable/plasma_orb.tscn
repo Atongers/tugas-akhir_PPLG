@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/objects/plasma_orb.gd" id="1_orb"]
+
+[node name="PlasmaOrb" type="Area2D"]
+script = ExtResource("1_orb")

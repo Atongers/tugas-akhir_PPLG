@@ -6,7 +6,7 @@ signal terminal_interacted(terminal: CodeTerminal)
 signal player_entered_range(terminal: CodeTerminal)
 signal player_exited_range(terminal: CodeTerminal)
 
-const TILESET_PNG_PATH := "res://resources/tilesets/tileset.png"
+const TILESET_PNG_PATH := "res://assets/tilesets/tileset.png"
 const BLINK_PATTERNS := [
 	[10, 10, 11, 11, 11, 11, 10, 10],
 	[11, 11, 10, 10, 10, 10, 11, 11],

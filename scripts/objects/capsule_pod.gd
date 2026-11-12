@@ -2,7 +2,7 @@
 extends Area2D
 class_name CapsulePod
 
-const TILESET_PNG_PATH := "res://resources/tilesets/tileset.png"
+const TILESET_PNG_PATH := "res://assets/tilesets/tileset.png"
 
 @export_enum("Orange:0", "Blue:1") var capsule_color: int = 0:
 	set(v):

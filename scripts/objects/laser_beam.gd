@@ -2,7 +2,7 @@
 extends Area2D
 class_name LaserBeam
 
-const TILESET_PNG_PATH := "res://resources/tilesets/tileset.png"
+const TILESET_PNG_PATH := "res://assets/tilesets/tileset.png"
 
 # Exact 8-frame patterns per cell index (0, 1, 2) for Orange and Blue lasers
 const ORANGE_PATTERNS := [

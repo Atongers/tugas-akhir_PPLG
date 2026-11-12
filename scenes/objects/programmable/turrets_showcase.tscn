@@ -1,0 +1,109 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/objects/programmable/turret_laser_sentry.tscn" id="1_tls"]
+[ext_resource type="PackedScene" path="res://scenes/objects/programmable/turret_plasma_pulse.tscn" id="2_tpp"]
+[ext_resource type="PackedScene" path="res://scenes/objects/programmable/turret_spotlight_scanner.tscn" id="3_tss"]
+[ext_resource type="PackedScene" uid="uid://drqqbv512e3dq" path="res://scenes/characters/player/dex.tscn" id="4_dex"]
+[ext_resource type="FontFile" uid="uid://bqj2g1x6x3b3a" path="res://assets/fonts/ttf/JetBrainsMono-Bold.ttf" id="5_font"]
+
+[node name="TurretsShowcase" type="Node2D"]
+
+[node name="Background" type="ColorRect" parent="."]
+offset_right = 640.0
+offset_bottom = 360.0
+color = Color(0.045, 0.06, 0.09, 1.0)
+
+[node name="Ground" type="ColorRect" parent="."]
+offset_top = 260.0
+offset_right = 640.0
+offset_bottom = 360.0
+color = Color(0.09, 0.12, 0.18, 1.0)
+
+[node name="GroundBorder" type="ColorRect" parent="."]
+offset_top = 258.0
+offset_right = 640.0
+offset_bottom = 260.0
+color = Color(0.22, 0.75, 0.98, 0.8)
+
+[node name="Title" type="Label" parent="."]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 620.0
+offset_bottom = 50.0
+theme_override_colors/font_color = Color(0.22, 0.75, 0.98, 1.0)
+theme_override_fonts/font = ExtResource("5_font")
+theme_override_font_sizes/font_size = 18
+text = "CODEVERSE DEFENSE — 3 TURRET VARIANTS"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="."]
+offset_left = 20.0
+offset_top = 50.0
+offset_right = 620.0
+offset_bottom = 75.0
+theme_override_colors/font_color = Color(0.28, 0.88, 0.52, 1.0)
+theme_override_fonts/font = ExtResource("5_font")
+theme_override_font_sizes/font_size = 10
+text = "REUSABLE PROGRAMMABLE HAZARDS & SENSORS FOR SYNTAX SHORE"
+horizontal_alignment = 1
+
+[node name="LabelT1" type="Label" parent="."]
+offset_left = 40.0
+offset_top = 180.0
+offset_right = 180.0
+offset_bottom = 205.0
+theme_override_colors/font_color = Color(0.22, 0.75, 0.98, 1.0)
+theme_override_fonts/font = ExtResource("5_font")
+theme_override_font_sizes/font_size = 9
+text = "1. Laser Sentry"
+horizontal_alignment = 1
+
+[node name="LabelT2" type="Label" parent="."]
+offset_left = 230.0
+offset_top = 180.0
+offset_right = 390.0
+offset_bottom = 205.0
+theme_override_colors/font_color = Color(0.98, 0.65, 0.22, 1.0)
+theme_override_fonts/font = ExtResource("5_font")
+theme_override_font_sizes/font_size = 9
+text = "2. Heavy Plasma Pulse"
+horizontal_alignment = 1
+
+[node name="LabelT3" type="Label" parent="."]
+offset_left = 420.0
+offset_top = 180.0
+offset_right = 560.0
+offset_bottom = 205.0
+theme_override_colors/font_color = Color(0.4, 0.85, 1.0, 1.0)
+theme_override_fonts/font = ExtResource("5_font")
+theme_override_font_sizes/font_size = 9
+text = "3. Spotlight Scanner"
+horizontal_alignment = 1
+
+[node name="LaserSentry" parent="." instance=ExtResource("1_tls")]
+position = Vector2(110, 256)
+scale = Vector2(1.5, 1.5)
+sweep_min_deg = -30.0
+sweep_max_deg = 30.0
+sweep_speed = 1.0
+max_laser_length = 90.0
+
+[node name="PlasmaPulse" parent="." instance=ExtResource("2_tpp")]
+position = Vector2(310, 256)
+scale = Vector2(1.5, 1.5)
+aim_angle_deg = -180.0
+fire_interval = 1.2
+projectile_speed = 85.0
+
+[node name="SpotlightScanner" parent="." instance=ExtResource("3_tss")]
+position = Vector2(490, 248)
+scale = Vector2(1.5, 1.5)
+sweep_min_deg = -135.0
+sweep_max_deg = -225.0
+sweep_speed = 0.8
+spotlight_range = 95.0
+spotlight_angle_deg = 45.0
+
+[node name="Dex" parent="." instance=ExtResource("4_dex")]
+position = Vector2(210, 258)
+scale = Vector2(1.2, 1.2)
