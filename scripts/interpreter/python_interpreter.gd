@@ -10,6 +10,11 @@ const KNOWN_FUNCTIONS := [
 	"aktifkan_elevator",
 	"set_tegangan_laser_biru",
 	"buka_gerbang_exit",
+	"matikan_laser_patroli",
+	"sinkronisasi_elevator",
+	"matikan_scanner",
+	"kalibrasi_crane",
+	"buka_exit_level_2",
 ]
 
 

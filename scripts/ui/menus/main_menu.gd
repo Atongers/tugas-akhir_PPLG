@@ -397,6 +397,7 @@ func _build_level_select_modal() -> void:
 
 		var w_concept := Label.new()
 		w_concept.text = "Konsep: %s | Status: %s" % [str(w["concept"]), str(w["status"])]
+		w_concept.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		if _font_regular:
 			w_concept.add_theme_font_override("font", _font_regular)
 		w_concept.add_theme_font_size_override("font_size", 12)
@@ -404,13 +405,27 @@ func _build_level_select_modal() -> void:
 		iv.add_child(w_concept)
 
 		if is_unlocked:
+			var btn_box := HBoxContainer.new()
+			btn_box.add_theme_constant_override("separation", 8)
+			ih.add_child(btn_box)
+
 			var play_btn := Button.new()
-			play_btn.text = "Mainkan [Level 1]"
+			play_btn.text = "Level 1"
 			if _font_semibold:
 				play_btn.add_theme_font_override("font", _font_semibold)
-			play_btn.custom_minimum_size = Vector2(160, 34)
+			play_btn.custom_minimum_size = Vector2(96, 34)
 			play_btn.pressed.connect(_on_continue_pressed)
-			ih.add_child(play_btn)
+			btn_box.add_child(play_btn)
+
+			var l2_btn := Button.new()
+			l2_btn.text = "Level 2"
+			if _font_semibold:
+				l2_btn.add_theme_font_override("font", _font_semibold)
+			l2_btn.custom_minimum_size = Vector2(96, 34)
+			l2_btn.pressed.connect(func() -> void:
+				get_tree().change_scene_to_file("res://scenes/levels/world_1_syntax_shore/level_2.tscn")
+			)
+			btn_box.add_child(l2_btn)
 		else:
 			var lock_lbl := Label.new()
 			lock_lbl.text = "🔒 Terkunci"

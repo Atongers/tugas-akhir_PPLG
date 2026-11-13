@@ -149,6 +149,7 @@ var _bug_log_modal: PanelContainer = null
 var _bug_log_vbox: VBoxContainer = null
 var _bug_log_title: Label = null
 var _bug_log_subtitle: Label = null
+var _next_level_btn: Button = null
 var _level_completed: bool = false
 
 var _hp_bar: ProgressBar = null
@@ -461,12 +462,25 @@ func _build_bug_log_modal() -> void:
 	_bug_log_vbox.add_theme_constant_override("separation", 8)
 	scroll.add_child(_bug_log_vbox)
 
+	var btn_row := HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_END
+	btn_row.add_theme_constant_override("separation", 10)
+	outer_vbox.add_child(btn_row)
+
+	_next_level_btn = Button.new()
+	_next_level_btn.text = "▶ Lanjut ke Level 2"
+	_next_level_btn.custom_minimum_size = Vector2(190, 34)
+	_next_level_btn.visible = false
+	_next_level_btn.pressed.connect(func() -> void:
+		get_tree().change_scene_to_file("res://scenes/levels/world_1_syntax_shore/level_2.tscn")
+	)
+	btn_row.add_child(_next_level_btn)
+
 	var close_btn := Button.new()
 	close_btn.text = "Tutup [L / Esc]"
 	close_btn.custom_minimum_size = Vector2(160, 34)
-	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close_btn.pressed.connect(func() -> void: _bug_log_modal.visible = false)
-	outer_vbox.add_child(close_btn)
+	btn_row.add_child(close_btn)
 
 
 func _toggle_bug_log_modal(is_level_clear: bool) -> void:
@@ -475,6 +489,9 @@ func _toggle_bug_log_modal(is_level_clear: bool) -> void:
 	if _bug_log_modal.visible and not is_level_clear:
 		_bug_log_modal.visible = false
 		return
+
+	if _next_level_btn:
+		_next_level_btn.visible = is_level_clear
 
 	if is_level_clear:
 		_bug_log_title.text = "LEVEL 1 SELESAI! — DUNIA 1: SYNTAX SHORE"

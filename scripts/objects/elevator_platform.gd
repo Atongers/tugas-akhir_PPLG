@@ -47,6 +47,7 @@ const CHAR_SHEET_PATH := "res://assets/sprites/characters/characters.png"
 			_rebuild_visuals()
 
 @export var step_offsets: Array[float] = [0.0, 8.0, 16.0, 24.0, 16.0, 8.0, 0.0, -8.0]
+@export_range(50.0, 1000.0, 10.0) var step_interval_ms: float = 100.0
 
 var _platform_body: StaticBody2D = null
 var _passenger_sprite: AnimatedSprite2D = null
@@ -60,7 +61,8 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	var step := int(Time.get_ticks_msec() / 100.0) % 8
+	var count := maxi(1, step_offsets.size())
+	var step := int(Time.get_ticks_msec() / maxf(10.0, step_interval_ms)) % count
 	if step != _last_step:
 		_last_step = step
 		_apply_step(step)
@@ -71,14 +73,15 @@ func set_active(active: bool) -> void:
 
 
 func _apply_step(step: int) -> void:
-	var idx := posmod(step, 8)
+	var count := maxi(1, step_offsets.size())
+	var idx := posmod(step, count)
 	var dy: float = 0.0
 	if is_active and step_offsets.size() > 0:
-		dy = float(step_offsets[idx % step_offsets.size()])
+		dy = float(step_offsets[idx])
 	if is_instance_valid(_platform_body):
 		_platform_body.position = Vector2(0.0, dy)
 	if is_instance_valid(_passenger_sprite):
-		_passenger_sprite.frame = idx
+		_passenger_sprite.frame = posmod(idx, 8)
 
 
 func _rebuild_visuals() -> void:

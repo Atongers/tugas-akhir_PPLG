@@ -46,14 +46,22 @@ const BLUE_HORIZ_PATTERNS := [
 		is_active = v
 		_update_active_state()
 
+@export var cyclic_enabled: bool = false
+@export_range(0.3, 6.0, 0.1) var cycle_on_duration: float = 1.6
+@export_range(0.3, 6.0, 0.1) var cycle_off_duration: float = 1.4
+@export var cycle_phase_offset: float = 0.0
+
 var _segment_sprites: Array[Sprite2D] = []
 var _col_shape: CollisionShape2D = null
 var _atlas_cache: Dictionary = {}
 var _last_step: int = -1
+var _cycle_timer: float = 0.0
+var _permanently_disabled: bool = false
 
 
 func _ready() -> void:
 	_rebuild_visuals()
+	_cycle_timer = cycle_phase_offset
 	_update_active_state()
 	_apply_step(0)
 	if not Engine.is_editor_hint():
@@ -61,7 +69,15 @@ func _ready() -> void:
 			body_entered.connect(_on_body_entered)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if not Engine.is_editor_hint() and cyclic_enabled and not _permanently_disabled:
+		_cycle_timer += delta
+		var total_period := maxf(0.2, cycle_on_duration + cycle_off_duration)
+		var phase := fposmod(_cycle_timer, total_period)
+		var should_be_active := phase < cycle_on_duration
+		if should_be_active != is_active:
+			is_active = should_be_active
+
 	if not is_active:
 		return
 	var step := int(Time.get_ticks_msec() / 100.0) % 8
@@ -71,6 +87,11 @@ func _process(_delta: float) -> void:
 
 
 func set_active(active: bool) -> void:
+	if not active:
+		_permanently_disabled = true
+		cyclic_enabled = false
+	else:
+		_permanently_disabled = false
 	is_active = active
 
 

@@ -41,6 +41,9 @@ enum MountOrientation { FLOOR = 0, CEILING = 1, WALL_LEFT = 2, WALL_RIGHT = 3 }
 		spotlight_angle_deg = v
 		_build_cone_geometry()
 
+@export var zap_damage: float = 25.0
+@export var zap_cooldown: float = 1.2
+
 var _base_sprite: Sprite2D = null
 var _head_pivot: Node2D = null
 var _head_sprite: Sprite2D = null
@@ -49,6 +52,7 @@ var _cone_area: Area2D = null
 var _cone_collision: CollisionPolygon2D = null
 
 var _sweep_time: float = 0.0
+var _zap_timer: float = 0.0
 var _is_alarm_active: bool = false
 var _tracked_player: Node2D = null
 
@@ -62,7 +66,13 @@ func _process(delta: float) -> void:
 	if not is_active:
 		if is_instance_valid(_cone_polygon):
 			_cone_polygon.visible = false
+		if _is_alarm_active:
+			_set_alarm(false)
+			alarm_cleared.emit()
+		_tracked_player = null
 		return
+
+	_zap_timer = maxf(0.0, _zap_timer - delta)
 
 	# Sweep scan rotation
 	_sweep_time += delta * sweep_speed
@@ -70,6 +80,18 @@ func _process(delta: float) -> void:
 	var angle_deg := lerpf(sweep_min_deg, sweep_max_deg, t)
 	if is_instance_valid(_head_pivot):
 		_head_pivot.rotation_degrees = angle_deg
+
+	if not Engine.is_editor_hint() and is_instance_valid(_tracked_player):
+		if _has_line_of_sight(_tracked_player):
+			if not _is_alarm_active:
+				_set_alarm(true)
+				alarm_triggered.emit(_tracked_player)
+			if _zap_timer <= 0.0 and _tracked_player.has_method("take_damage"):
+				_tracked_player.take_damage(zap_damage, "scanner")
+				_zap_timer = zap_cooldown
+		elif _is_alarm_active:
+			_set_alarm(false)
+			alarm_cleared.emit()
 
 
 func _rebuild_visuals() -> void:
@@ -116,7 +138,7 @@ func _rebuild_visuals() -> void:
 		_cone_area = Area2D.new()
 		_cone_area.name = "ConeDetectionArea"
 		_cone_area.collision_layer = 0
-		_cone_area.collision_mask = 2 # Player layer
+		_cone_area.collision_mask = 1 | 2 # Detect player on layer 1 or 2
 		_cone_collision = CollisionPolygon2D.new()
 		_cone_area.add_child(_cone_collision)
 		_cone_area.body_entered.connect(_on_cone_body_entered)
@@ -168,10 +190,30 @@ func _update_state() -> void:
 
 
 func _on_cone_body_entered(body: Node2D) -> void:
-	if body is CharacterBody2D or body.name.to_lower().contains("dex"):
+	if body.is_in_group("player") or body is CharacterBody2D or body.name.to_lower().contains("dex"):
 		_tracked_player = body
-		_set_alarm(true)
-		alarm_triggered.emit(body)
+		if _has_line_of_sight(body):
+			_set_alarm(true)
+			alarm_triggered.emit(body)
+			if _zap_timer <= 0.0 and body.has_method("take_damage"):
+				body.take_damage(zap_damage, "scanner")
+				_zap_timer = zap_cooldown
+
+
+func _has_line_of_sight(target: Node2D) -> bool:
+	if not is_instance_valid(_head_pivot) or not is_instance_valid(target):
+		return false
+	var space := get_world_2d().direct_space_state
+	if not space:
+		return true
+	var from_pos := _head_pivot.global_position
+	var to_pos := target.global_position + Vector2(0.0, -10.0)
+	var query := PhysicsRayQueryParameters2D.create(from_pos, to_pos, 1)
+	query.exclude = [self]
+	var hit := space.intersect_ray(query)
+	if hit.is_empty():
+		return true
+	return hit.get("collider") == target
 
 
 func _on_cone_body_exited(body: Node2D) -> void:
