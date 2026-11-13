@@ -236,6 +236,9 @@ func _set_alarm(alert: bool) -> void:
 # Python Terminal API
 func matikan_sensor() -> void:
 	is_active = false
+	if is_instance_valid(_head_pivot):
+		_head_pivot.rotation_degrees = 35.0
+	_set_alarm(false)
 
 
 func nyalakan_sensor() -> void:

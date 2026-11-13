@@ -50,12 +50,14 @@ const BLUE_HORIZ_PATTERNS := [
 @export_range(0.3, 6.0, 0.1) var cycle_on_duration: float = 1.6
 @export_range(0.3, 6.0, 0.1) var cycle_off_duration: float = 1.4
 @export var cycle_phase_offset: float = 0.0
+@export var erratic_bug_mode: bool = false
 
 var _segment_sprites: Array[Sprite2D] = []
 var _col_shape: CollisionShape2D = null
 var _atlas_cache: Dictionary = {}
 var _last_step: int = -1
 var _cycle_timer: float = 0.0
+var _erratic_spark_timer: float = 0.0
 var _permanently_disabled: bool = false
 
 
@@ -80,6 +82,14 @@ func _process(delta: float) -> void:
 
 	if not is_active:
 		return
+	if not Engine.is_editor_hint() and erratic_bug_mode:
+		var flicker := 0.55 + 0.45 * absf(sin(Time.get_ticks_msec() * 0.025))
+		modulate = Color(1.0, 0.85, 0.7, flicker)
+		_erratic_spark_timer -= delta
+		if _erratic_spark_timer <= 0.0:
+			_erratic_spark_timer = randf_range(0.45, 0.9)
+			var mid_offset := Vector2(8.0, float(length_tiles) * 8.0) if orientation == 0 else Vector2(float(length_tiles) * 8.0, 8.0)
+			VfxBurst.spawn_burst(get_parent(), "res://assets/sprites/vfx/vfx_spark_error.png", global_position + mid_offset, 2, 18.0, -14.0)
 	var step := int(Time.get_ticks_msec() / 100.0) % 8
 	if step != _last_step:
 		_last_step = step
@@ -90,6 +100,8 @@ func set_active(active: bool) -> void:
 	if not active:
 		_permanently_disabled = true
 		cyclic_enabled = false
+		erratic_bug_mode = false
+		modulate = Color.WHITE
 	else:
 		_permanently_disabled = false
 	is_active = active

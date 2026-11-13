@@ -9,6 +9,7 @@ signal player_died()
 signal player_respawned()
 
 const SPRITESHEET_PATH := "res://assets/sprites/characters/characters.png"
+const VFX_DUST_PATH := "res://assets/sprites/vfx/vfx_dust_cyan.png"
 ## Row 2 in 1-based numbering (index 1: Cyan Antenna Bot)
 const DEX_ROW_INDEX: int = 1
 const FRAME_Y_START: int = DEX_ROW_INDEX * 32 - 2
@@ -44,8 +45,13 @@ var controls_enabled: bool = true
 
 var _coyote_timer: float = 0.0
 var _jump_buffer_timer: float = 0.0
+var _was_on_floor: bool = false
+var _sprint_dust_timer: float = 0.0
+var _camera_trauma: float = 0.0
+var _hit_flash_timer: float = 0.0
 
 @onready var anim_sprite: AnimatedSprite2D = $AnimatedSprite2D
+@onready var camera_2d: Camera2D = get_node_or_null("Camera2D")
 
 
 func _ready() -> void:
@@ -62,10 +68,29 @@ func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 
+	# Camera trauma decay
+	if is_instance_valid(camera_2d):
+		if _camera_trauma > 0.0 and not VfxBurst.reduce_screen_shake:
+			_camera_trauma = maxf(0.0, _camera_trauma - delta * 1.8)
+			var shake := _camera_trauma * _camera_trauma * 10.0
+			camera_2d.offset = Vector2(randf_range(-shake, shake), randf_range(-shake, shake))
+		else:
+			_camera_trauma = 0.0
+			camera_2d.offset = Vector2.ZERO
+
+	# Squash & stretch + hit flash recovery
+	if anim_sprite:
+		anim_sprite.scale = anim_sprite.scale.lerp(Vector2.ONE, minf(1.0, delta * 14.0))
+		if _hit_flash_timer > 0.0:
+			_hit_flash_timer -= delta
+			anim_sprite.modulate = Color(2.2, 2.2, 2.2, 1.0)
+			if _hit_flash_timer <= 0.0:
+				anim_sprite.modulate = Color.WHITE
+
 	# Invulnerability frames handling
 	if is_invulnerable:
 		_iframe_timer -= delta
-		if anim_sprite:
+		if anim_sprite and _hit_flash_timer <= 0.0:
 			anim_sprite.modulate.a = 0.35 if int(_iframe_timer * 16.0) % 2 == 0 else 1.0
 		if _iframe_timer <= 0.0:
 			is_invulnerable = false
@@ -120,6 +145,23 @@ func _physics_process(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, 0.0, friction * delta)
 
 	move_and_slide()
+
+	# Landing squash & dust VFX
+	if not _was_on_floor and is_on_floor():
+		if anim_sprite:
+			anim_sprite.scale = Vector2(1.18, 0.84)
+		VfxBurst.spawn_burst(get_parent(), VFX_DUST_PATH, global_position, 3, 22.0, -14.0)
+	_was_on_floor = is_on_floor()
+
+	# Sprint dust VFX
+	if is_sprinting and is_on_floor():
+		_sprint_dust_timer -= delta
+		if _sprint_dust_timer <= 0.0:
+			_sprint_dust_timer = 0.16
+			VfxBurst.spawn_burst(get_parent(), VFX_DUST_PATH, global_position, 2, 16.0, -10.0)
+	else:
+		_sprint_dust_timer = 0.0
+
 	_update_animation(direction)
 
 	# Safe respawn at checkpoint if falling out of bounds
@@ -129,12 +171,20 @@ func _physics_process(delta: float) -> void:
 			respawn_at_checkpoint()
 
 
+func add_camera_trauma(amount: float) -> void:
+	if VfxBurst.reduce_screen_shake:
+		return
+	_camera_trauma = minf(1.0, _camera_trauma + maxf(0.0, amount))
+
+
 func take_damage(amount: float, source: String = "") -> void:
 	if is_invulnerable or health <= 0.0:
 		return
 	health = maxf(0.0, health - amount)
 	is_invulnerable = true
 	_iframe_timer = iframe_duration
+	if not VfxBurst.reduce_flash:
+		_hit_flash_timer = 0.09
 	velocity.y = -120.0
 	player_damaged.emit(amount, source)
 	health_changed.emit(health, max_health)

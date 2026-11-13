@@ -195,6 +195,20 @@ var _toast_label: Label = null
 var _toast_timer: float = 0.0
 var _visited_sectors: Dictionary = {}
 
+const WIRING_SHEET_PATH := "res://assets/sprites/environment/wiring_cables_sheet.png"
+const PROPS_SHEET_PATH := "res://assets/sprites/environment/sector_props_sheet.png"
+const UI_ICONS_PATH := "res://assets/ui/ui_status_icons_sheet.png"
+const VFX_SPARK_PATH := "res://assets/sprites/vfx/vfx_spark_error.png"
+const VFX_SOLVED_PATH := "res://assets/sprites/vfx/vfx_energy_solved.png"
+const VFX_DUST_PATH := "res://assets/sprites/vfx/vfx_dust_cyan.png"
+
+var _wire_groups: Dictionary = {}
+var _checkpoint_activated: bool = false
+var _checkpoint_label: Label = null
+var _checkpoint_aura_timer: float = 0.0
+var _status_icon: TextureRect = null
+var _cam_icon: TextureRect = null
+
 
 func _ready() -> void:
 	_build_all()
@@ -216,17 +230,29 @@ func _process(delta: float) -> void:
 		var px := dex.global_position.x
 		if px < 480.0 and not _visited_sectors.has(1):
 			_visited_sectors[1] = true
-			_show_lint_toast("Lint [Sektor 1]: \"Hati-hati dengan Laser Patroli & Duri! Gunakan [Shift] untuk Sprint saat laser mati.\"")
+			_show_lint_toast("Lint [Sektor 1]: \"Dek Bawah mengalami lonjakan daya. Cek kabel merah menuju Terminal 1, lalu perbaiki siklus Elevator!\"")
 		elif px >= 512.0 and px < 1000.0 and not _visited_sectors.has(2):
 			_visited_sectors[2] = true
-			_show_lint_toast("Lint [Sektor 2]: \"Sentuh CapsulePod untuk Checkpoint! Sembunyi di balik Crate agar tidak terdeteksi Scanner.\"")
+			_show_lint_toast("Lint [Sektor 2]: \"Menara Kontrol aktif! Sentuh CapsulePod untuk Checkpoint, lalu gunakan peti sebagai pelindung dari Scanner.\"")
 		elif px >= 1024.0 and not _visited_sectors.has(3):
 			_visited_sectors[3] = true
-			_show_lint_toast("Lint [Sektor 3]: \"Koridor Sprint! Manfaatkan Energy untuk lari melewati laser berkedip menuju Terminal 5.\"")
+			_show_lint_toast("Lint [Sektor 3]: \"Terowongan Reaktor di depan! Tahan [Shift] untuk Sprint melewati laser siklik menuju Terminal akhir.\"")
+
+		# CapsulePod Checkpoint aura + label feedback
+		var pod := get_node_or_null("Interactables/CapsulePod_Checkpoint")
+		if pod:
+			var dist_pod := dex.global_position.distance_to(pod.global_position)
+			if dist_pod < 48.0:
+				if not _checkpoint_activated:
+					_checkpoint_activated = true
+					_show_checkpoint_banner(pod.global_position)
+				_checkpoint_aura_timer -= delta
+				if _checkpoint_aura_timer <= 0.0:
+					_checkpoint_aura_timer = 0.35
+					VfxBurst.spawn_burst(self, VFX_DUST_PATH, pod.global_position + Vector2(0.0, -8.0), 2, 16.0, -28.0)
 
 		if "is_in_recharge_zone" in dex:
 			var near_recharge := false
-			var pod := get_node_or_null("Interactables/CapsulePod_Checkpoint")
 			if pod and dex.global_position.distance_to(pod.global_position) < 48.0:
 				near_recharge = true
 			if not near_recharge:
@@ -288,8 +314,15 @@ func _setup_runtime() -> void:
 	if exit_gate:
 		if exit_gate.has_method("set_unlocked"):
 			exit_gate.call("set_unlocked", false)
+		if exit_gate.has_signal("player_reached_exit") and not exit_gate.player_reached_exit.is_connected(_on_level_completed):
+			exit_gate.player_reached_exit.connect(_on_level_completed)
 		if exit_gate.has_signal("level_completed") and not exit_gate.level_completed.is_connected(_on_level_completed):
 			exit_gate.level_completed.connect(_on_level_completed)
+
+	if dex and dex.has_signal("player_damaged") and not dex.player_damaged.is_connected(_on_dex_damaged):
+		dex.player_damaged.connect(_on_dex_damaged)
+
+	Engine.time_scale = 1.0
 
 	if not terminal_overlay:
 		terminal_overlay = get_node_or_null("TerminalOverlay")
@@ -422,8 +455,17 @@ func _setup_hud_extras() -> void:
 		hud_status.clip_text = true
 		hud_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		hud_status.add_theme_font_size_override("font_size", 12)
+		if not _status_icon:
+			_status_icon = _make_ui_icon_rect(2)
+			_status_icon.name = "StatusIcon"
+			hbox.add_child(_status_icon)
+			hbox.move_child(_status_icon, hud_status.get_index())
 
 	if not _hud_progress_label:
+		if not _cam_icon:
+			_cam_icon = _make_ui_icon_rect(3)
+			_cam_icon.name = "CamIcon"
+			hbox.add_child(_cam_icon)
 		_hud_progress_label = Label.new()
 		_hud_progress_label.name = "ProgressLabel"
 		_hud_progress_label.add_theme_font_size_override("font_size", 13)
@@ -455,6 +497,58 @@ func _setup_hud_extras() -> void:
 
 	_build_bug_log_modal()
 	_build_lint_toast()
+
+
+func _make_ui_icon_rect(frame_idx: int) -> TextureRect:
+	var icon_rect := TextureRect.new()
+	icon_rect.custom_minimum_size = Vector2(16, 16)
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	var tex: Texture2D = load(UI_ICONS_PATH)
+	if tex:
+		var atlas := AtlasTexture.new()
+		atlas.atlas = tex
+		atlas.region = Rect2(frame_idx * 16, 0, 16, 16)
+		icon_rect.texture = atlas
+	return icon_rect
+
+
+func _set_status_icon_frame(frame_idx: int) -> void:
+	if not is_instance_valid(_status_icon):
+		return
+	var atlas := _status_icon.texture as AtlasTexture
+	if atlas:
+		atlas.region = Rect2(frame_idx * 16, 0, 16, 16)
+
+
+func _on_dex_damaged(_amount: float, _source: String) -> void:
+	if dex and dex.has_method("add_camera_trauma"):
+		dex.call("add_camera_trauma", 0.30)
+	VfxBurst.trigger_hit_stop(get_tree(), 0.04)
+	if dex:
+		VfxBurst.spawn_burst(self, VFX_SPARK_PATH, dex.global_position + Vector2(0.0, -10.0), 10, 42.0, -32.0)
+	_set_status_icon_frame(0)
+
+
+func _show_checkpoint_banner(world_pos: Vector2) -> void:
+	if is_instance_valid(_checkpoint_label):
+		return
+	_checkpoint_label = Label.new()
+	_checkpoint_label.text = "CHECKPOINT AKTIF"
+	_checkpoint_label.position = world_pos + Vector2(-36.0, -42.0)
+	_checkpoint_label.scale = Vector2(0.45, 0.45)
+	_checkpoint_label.add_theme_color_override("font_color", Color(0.35, 1.0, 0.78))
+	_checkpoint_label.z_index = 20
+	add_child(_checkpoint_label)
+	var tw := create_tween()
+	tw.tween_property(_checkpoint_label, "position:y", _checkpoint_label.position.y - 10.0, 1.2)
+	tw.parallel().tween_property(_checkpoint_label, "modulate:a", 0.0, 1.4).set_delay(1.2)
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(_checkpoint_label):
+			_checkpoint_label.queue_free()
+			_checkpoint_label = null
+	)
 
 
 func _build_lint_toast() -> void:
@@ -776,6 +870,23 @@ func _on_terminal_solved(terminal_id: String, bug_log_entry: Dictionary) -> void
 	_update_hud_display(next_msg)
 	if hud_status:
 		hud_status.modulate = Color(0.4, 1.0, 0.6)
+	_set_status_icon_frame(1)
+	_mark_wire_solved(terminal_id)
+
+	var term_node: Node2D = get_node_or_null("Terminals/%s" % terminal_id)
+	var burst_pos := term_node.global_position + Vector2(0.0, 12.0) if term_node else (dex.global_position if dex else Vector2.ZERO)
+	if terminal_id == "Terminal_5":
+		if dex and dex.has_method("add_camera_trauma"):
+			dex.call("add_camera_trauma", 0.35)
+		VfxBurst.trigger_hit_stop(get_tree(), 0.06)
+		var exit_gate: Node2D = get_node_or_null("Interactables/ExitGate")
+		if exit_gate:
+			VfxBurst.spawn_burst(self, VFX_SOLVED_PATH, exit_gate.global_position + Vector2(16.0, 4.0), 20, 56.0, -40.0)
+	else:
+		if dex and dex.has_method("add_camera_trauma"):
+			dex.call("add_camera_trauma", 0.20)
+		VfxBurst.trigger_hit_stop(get_tree(), 0.05)
+		VfxBurst.spawn_burst(self, VFX_SOLVED_PATH, burst_pos, 14, 40.0, -30.0)
 
 
 func _on_level_completed() -> void:
@@ -835,24 +946,42 @@ func _populate_terrain_layer(layer: TileMapLayer) -> void:
 		layer.set_cell(Vector2i(94, y), 0, Vector2i(3, 4))
 		layer.set_cell(Vector2i(95, y), 0, Vector2i(1, 4))
 
-	# Main Floor row y=24..25 across Sector 1 & 2 & 3 (with recessed spike pits)
-	for x in range(2, 94):
-		var is_pit := (x >= 12 and x <= 13) or (x >= 84 and x <= 86)
+	# Sector 1 Stepped Lower Deck (x=2..29): Left pier y=22, stepped spike pit x=11..13 (y=25),
+	# patrol deck y=22 (x=17..24), elevator alcove y=24 (x=25..29)
+	for x in range(2, 30):
+		if x >= 2 and x <= 8:
+			for y in range(22, 26):
+				layer.set_cell(Vector2i(x, y), 0, Vector2i(1, 2 if y == 22 else 4))
+		elif x >= 9 and x <= 10 or x >= 14 and x <= 16:
+			for y in range(23, 26):
+				layer.set_cell(Vector2i(x, y), 0, Vector2i(1, 2 if y == 23 else 4))
+		elif x >= 11 and x <= 13:
+			layer.set_cell(Vector2i(x, 25), 0, Vector2i(1, 4))
+		elif x >= 17 and x <= 24:
+			for y in range(22, 26):
+				layer.set_cell(Vector2i(x, y), 0, Vector2i(1, 2 if y == 22 else 4))
+		else:
+			layer.set_cell(Vector2i(x, 24), 0, Vector2i(1, 2))
+			layer.set_cell(Vector2i(x, 25), 0, Vector2i(1, 4))
+
+	# Sector 2 & 3 Main Floor row y=24..25 (x=32..93, with recessed spike pit at x=85..87)
+	for x in range(32, 94):
+		var is_pit := (x >= 85 and x <= 87)
 		if is_pit:
 			layer.set_cell(Vector2i(x, 25), 0, Vector2i(1, 4))
 		else:
 			layer.set_cell(Vector2i(x, 24), 0, Vector2i(1, 2))
 			layer.set_cell(Vector2i(x, 25), 0, Vector2i(1, 4))
 
-	# Sector 1 low ceiling over Patrol Laser (x=18..26, y=18..19)
-	for x in range(18, 27):
-		layer.set_cell(Vector2i(x, 18), 0, Vector2i(1, 2))
-		layer.set_cell(Vector2i(x, 19), 0, Vector2i(1, 5))
+	# Sector 1 low ceiling over Patrol Laser (x=18..24, y=16..17 -> bottom 288, floor y=22 top 352)
+	for x in range(18, 25):
+		layer.set_cell(Vector2i(x, 16), 0, Vector2i(1, 2))
+		layer.set_cell(Vector2i(x, 17), 0, Vector2i(1, 5))
 
-	# Divider Wall Sector 1 -> Sector 2 (x=30..31, bottom y=16..23, gap y=10..15)
-	for y in range(16, 24):
-		layer.set_cell(Vector2i(30, y), 0, Vector2i(3, 4))
-		layer.set_cell(Vector2i(31, y), 0, Vector2i(4, 4))
+	# Divider Wall Sector 1 -> Sector 2 (x=30..31, bottom y=16..25, gap y=10..15)
+	for y in range(16, 26):
+		layer.set_cell(Vector2i(30, y), 0, Vector2i(3 if y < 24 else 1, 4))
+		layer.set_cell(Vector2i(31, y), 0, Vector2i(4 if y < 24 else 1, 4))
 	for y in range(2, 10):
 		layer.set_cell(Vector2i(30, y), 0, Vector2i(3, 4))
 		layer.set_cell(Vector2i(31, y), 0, Vector2i(4, 4))
@@ -900,7 +1029,7 @@ func _populate_terrain_layer(layer: TileMapLayer) -> void:
 
 	# Sector 3 One-Way steps down to Exit Hall & over Final Spike Pit
 	_place_one_way_platform(layer, 80, 22, 3)
-	_place_one_way_platform(layer, 84, 22, 3)
+	_place_one_way_platform(layer, 85, 22, 3)
 
 
 func _place_one_way_platform(layer: TileMapLayer, start_x: int, y: int, length: int) -> void:
@@ -915,3 +1044,127 @@ func _place_one_way_platform(layer: TileMapLayer, start_x: int, y: int, length: 
 
 func _populate_props_layer(layer: TileMapLayer) -> void:
 	layer.clear()
+	_rebuild_environmental_props()
+	_rebuild_wiring_paths()
+
+
+func _rebuild_environmental_props() -> void:
+	var parent_node: Node = (props_layer as Node) if props_layer != null else (self as Node)
+	var old := parent_node.get_node_or_null("EnvPropsContainer")
+	if old:
+		parent_node.remove_child(old)
+		old.queue_free()
+
+	var props_tex: Texture2D = load(PROPS_SHEET_PATH)
+	if not props_tex:
+		return
+
+	var container := Node2D.new()
+	container.name = "EnvPropsContainer"
+	container.z_index = 0
+	parent_node.add_child(container)
+
+	# Sector 1: Dek Bawah (row 0 of sector_props_sheet)
+	var s1_placements := [
+		[Vector2i(3, 21), Vector2i(0, 0)], [Vector2i(6, 21), Vector2i(1, 0)],
+		[Vector2i(10, 22), Vector2i(2, 0)], [Vector2i(15, 22), Vector2i(2, 0)],
+		[Vector2i(19, 15), Vector2i(3, 0)], [Vector2i(26, 23), Vector2i(4, 0)],
+		[Vector2i(28, 23), Vector2i(5, 0)], [Vector2i(28, 14), Vector2i(6, 0)],
+	]
+	# Sector 2: Menara Kontrol & Crane (row 1)
+	var s2_placements := [
+		[Vector2i(33, 14), Vector2i(0, 1)], [Vector2i(36, 14), Vector2i(1, 1)],
+		[Vector2i(41, 23), Vector2i(2, 1)], [Vector2i(44, 23), Vector2i(3, 1)],
+		[Vector2i(49, 23), Vector2i(4, 1)], [Vector2i(58, 19), Vector2i(5, 1)],
+		[Vector2i(60, 12), Vector2i(6, 1)], [Vector2i(51, 23), Vector2i(7, 1)],
+	]
+	# Sector 3: Terowongan Reaktor & Exit (row 2 & 3)
+	var s3_placements := [
+		[Vector2i(65, 19), Vector2i(1, 2)], [Vector2i(69, 19), Vector2i(1, 2)],
+		[Vector2i(75, 19), Vector2i(1, 2)], [Vector2i(67, 13), Vector2i(0, 2)],
+		[Vector2i(73, 13), Vector2i(2, 2)], [Vector2i(77, 13), Vector2i(3, 2)],
+		[Vector2i(89, 23), Vector2i(4, 2)], [Vector2i(90, 22), Vector2i(5, 2)],
+		[Vector2i(92, 22), Vector2i(6, 2)], [Vector2i(91, 20), Vector2i(7, 2)],
+	]
+
+	for group_list in [s1_placements, s2_placements, s3_placements]:
+		for item in group_list:
+			var grid_pos: Vector2i = item[0]
+			var atlas_pos: Vector2i = item[1]
+			var sp := Sprite2D.new()
+			sp.centered = false
+			sp.position = Vector2(grid_pos.x * 16.0, grid_pos.y * 16.0)
+			sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			var at := AtlasTexture.new()
+			at.atlas = props_tex
+			at.region = Rect2(atlas_pos.x * 16, atlas_pos.y * 16, 16, 16)
+			sp.texture = at
+			container.add_child(sp)
+
+
+func _rebuild_wiring_paths() -> void:
+	_wire_groups.clear()
+	var parent_node: Node = (props_layer as Node) if props_layer != null else (self as Node)
+	var old := parent_node.get_node_or_null("WiringContainer")
+	if old:
+		parent_node.remove_child(old)
+		old.queue_free()
+
+	var wire_tex: Texture2D = load(WIRING_SHEET_PATH)
+	if not wire_tex:
+		return
+
+	var container := Node2D.new()
+	container.name = "WiringContainer"
+	container.z_index = 0
+	parent_node.add_child(container)
+
+	var paths := {
+		"Terminal_1": [Vector2i(18, 21), Vector2i(19, 21), Vector2i(20, 21), Vector2i(21, 21), Vector2i(22, 21), Vector2i(22, 20), Vector2i(22, 19), Vector2i(22, 18)],
+		"Terminal_2": [Vector2i(25, 23), Vector2i(26, 23), Vector2i(27, 23)],
+		"Terminal_3": [
+			Vector2i(51, 23), Vector2i(50, 23), Vector2i(49, 23),
+			Vector2i(48, 23), Vector2i(47, 23), Vector2i(47, 22),
+			Vector2i(47, 21), Vector2i(47, 20), Vector2i(47, 19),
+			Vector2i(47, 18), Vector2i(46, 17)
+		],
+		"Terminal_4": [Vector2i(58, 19), Vector2i(59, 19), Vector2i(60, 19), Vector2i(60, 18), Vector2i(60, 17), Vector2i(60, 16), Vector2i(61, 16), Vector2i(62, 16)],
+		"Terminal_5": [Vector2i(88, 23), Vector2i(89, 23), Vector2i(90, 23), Vector2i(91, 23)],
+	}
+
+	for term_id in paths.keys():
+		var arr: Array[Sprite2D] = []
+		var pts: Array = paths[term_id]
+		var solved := _solved_terminals.has(term_id)
+		var row_idx := 2 if solved else 1
+		for i in range(pts.size()):
+			var p: Vector2i = pts[i]
+			var col_idx := 0
+			if i == 0 or i == pts.size() - 1:
+				col_idx = 5
+			elif i > 0 and pts[i - 1].x == p.x and (i + 1 < pts.size() and pts[i + 1].x == p.x):
+				col_idx = 1
+			var sp := Sprite2D.new()
+			sp.centered = false
+			sp.position = Vector2(p.x * 16.0, p.y * 16.0)
+			sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			var at := AtlasTexture.new()
+			at.atlas = wire_tex
+			at.region = Rect2(col_idx * 16, row_idx * 16, 16, 16)
+			sp.texture = at
+			container.add_child(sp)
+			arr.append(sp)
+		_wire_groups[term_id] = arr
+
+
+func _mark_wire_solved(terminal_id: String) -> void:
+	if not _wire_groups.has(terminal_id):
+		return
+	var arr: Array = _wire_groups[terminal_id]
+	for sp in arr:
+		if is_instance_valid(sp):
+			var at := sp.texture as AtlasTexture
+			if at:
+				var reg := at.region
+				reg.position.y = 32.0
+				at.region = reg

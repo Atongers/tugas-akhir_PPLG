@@ -40,9 +40,10 @@ tile_set = ExtResource("2_tileset")
 [node name="Programmable" type="Node2D" parent="." unique_id=1497944875]
 
 [node name="LaserPatrol_1" parent="Programmable" unique_id=124187543 instance=ExtResource("6_lasero")]
-position = Vector2(320, 320)
+position = Vector2(352, 288)
 length_tiles = 4
 cyclic_enabled = true
+erratic_bug_mode = true
 
 [node name="Elevator_S1_S2" parent="Programmable" unique_id=390436391 instance=ExtResource("4_elev")]
 position = Vector2(432, 368)
@@ -51,16 +52,19 @@ cable_top_offset_px = -336.0
 cable_height_tiles = 21
 step_offsets = Array[float]([0.0, -24.0, -48.0, -72.0, -96.0, -120.0, -144.0, -144.0, -120.0, -96.0, -72.0, -48.0, -24.0, 0.0])
 step_interval_ms = 300.0
+jammed_mode = true
 
 [node name="Scanner_1" parent="Programmable" unique_id=538367852 instance=ExtResource("8_scanner")]
 position = Vector2(736, 256)
 rotation = 3.1415927
 mount_orientation = 1
+sweep_speed = 1.4
 spotlight_range = 160.0
 
 [node name="CraneClaw" parent="Programmable" unique_id=929600225 instance=ExtResource("5_crane")]
 position = Vector2(960, 224)
 cable_tiles_length = 12
+bug_reverse_mode = true
 
 [node name="LaserGate_S2_S3" parent="Programmable" unique_id=749680532 instance=ExtResource("7_laserb")]
 position = Vector2(992, 256)
@@ -80,14 +84,14 @@ cycle_phase_offset = 1.5
 [node name="Terminals" type="Node2D" parent="." unique_id=1815634867]
 
 [node name="Terminal_1" parent="Terminals" unique_id=478175048 instance=ExtResource("9_term")]
-position = Vector2(257, 352)
+position = Vector2(288, 320)
 
 [node name="Terminal_2" parent="Terminals" unique_id=44986463 instance=ExtResource("9_term")]
-position = Vector2(382, 352)
+position = Vector2(400, 352)
 terminal_id = "Terminal_2"
 
 [node name="Terminal_3" parent="Terminals" unique_id=393530721 instance=ExtResource("9_term")]
-position = Vector2(877, 352)
+position = Vector2(816, 352)
 terminal_id = "Terminal_3"
 blink_pattern_index = 1
 
@@ -104,9 +108,10 @@ blink_pattern_index = 1
 [node name="Interactables" type="Node2D" parent="." unique_id=1873027640]
 
 [node name="FloorSpike_1" parent="Interactables" unique_id=1807903866 instance=ExtResource("12_spike")]
-position = Vector2(192, 384)
+position = Vector2(176, 384)
 collision_layer = 0
 collision_mask = 3
+width_tiles = 3
 
 [node name="CapsulePod_Checkpoint" parent="Interactables" unique_id=1096310540 instance=ExtResource("10_caps")]
 position = Vector2(544, 224)
@@ -127,12 +132,14 @@ crate_variant = 2
 position = Vector2(1152, 320)
 collision_layer = 0
 collision_mask = 3
+variant_index = 2
 
 [node name="FloorSpike_3" parent="Interactables" unique_id=732888660 instance=ExtResource("12_spike")]
-position = Vector2(1344, 384)
+position = Vector2(1360, 384)
 collision_layer = 0
 collision_mask = 3
 width_tiles = 3
+variant_index = 2
 
 [node name="ExitGate" parent="Interactables" unique_id=1439138312 instance=ExtResource("13_exit")]
 position = Vector2(1456, 356)
@@ -142,7 +149,7 @@ position = Vector2(768, 216)
 zoom = Vector2(0.75, 0.75)
 
 [node name="Dex" parent="." unique_id=608186455 instance=ExtResource("3_dex")]
-position = Vector2(64, 384)
+position = Vector2(64, 352)
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=182065438]
 

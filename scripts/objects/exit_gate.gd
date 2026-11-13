@@ -4,14 +4,18 @@ class_name ExitGate
 
 signal player_reached_exit
 
+const GATE_SHEET_PATH := "res://assets/sprites/objects/exit_gate_sheet.png"
+const VFX_SOLVED_PATH := "res://assets/sprites/vfx/vfx_energy_solved.png"
+
 @export var is_unlocked: bool = false:
 	set(v):
+		var was_unlocked := is_unlocked
 		is_unlocked = v
 		_update_visual_state()
+		if not Engine.is_editor_hint() and is_unlocked and not was_unlocked and is_inside_tree():
+			VfxBurst.spawn_burst(get_parent(), VFX_SOLVED_PATH, global_position + Vector2(16.0, 4.0), 10, 42.0, -32.0)
 
-var _beam_left: ColorRect = null
-var _beam_right: ColorRect = null
-var _portal_fill: ColorRect = null
+var _gate_sprite: Sprite2D = null
 var _status_label: Label = null
 var _pulse_time: float = 0.0
 
@@ -25,13 +29,12 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	_pulse_time += delta * 4.0
-	if is_instance_valid(_portal_fill):
-		var alpha := 0.28 + 0.15 * sin(_pulse_time)
+	_pulse_time += delta
+	if is_instance_valid(_gate_sprite):
 		if is_unlocked:
-			_portal_fill.color = Color(0.15, 0.95, 0.45, alpha)
+			_gate_sprite.frame = 2
 		else:
-			_portal_fill.color = Color(0.95, 0.2, 0.25, alpha * 0.7)
+			_gate_sprite.frame = 1 if int(_pulse_time / 0.45) % 2 == 1 else 0
 
 
 func set_unlocked(unlocked: bool) -> void:
@@ -50,31 +53,20 @@ func _rebuild_visuals() -> void:
 		remove_child(child)
 		child.queue_free()
 
-	_portal_fill = ColorRect.new()
-	_portal_fill.name = "PortalFill"
-	_portal_fill.position = Vector2(2.0, -16.0)
-	_portal_fill.size = Vector2(28.0, 44.0)
-	_portal_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_portal_fill)
-
-	_beam_left = ColorRect.new()
-	_beam_left.name = "BeamLeft"
-	_beam_left.position = Vector2(0.0, -16.0)
-	_beam_left.size = Vector2(2.0, 44.0)
-	_beam_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_beam_left)
-
-	_beam_right = ColorRect.new()
-	_beam_right.name = "BeamRight"
-	_beam_right.position = Vector2(30.0, -16.0)
-	_beam_right.size = Vector2(2.0, 44.0)
-	_beam_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_beam_right)
+	_gate_sprite = Sprite2D.new()
+	_gate_sprite.name = "GateSprite"
+	_gate_sprite.centered = false
+	_gate_sprite.position = Vector2(0.0, -20.0)
+	_gate_sprite.texture = load(GATE_SHEET_PATH)
+	_gate_sprite.hframes = 3
+	_gate_sprite.frame = 2 if is_unlocked else 0
+	_gate_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	add_child(_gate_sprite)
 
 	_status_label = Label.new()
 	_status_label.name = "StatusLabel"
 	_status_label.scale = Vector2(0.4, 0.4)
-	_status_label.position = Vector2(-6.0, -28.0)
+	_status_label.position = Vector2(-6.0, -34.0)
 	add_child(_status_label)
 
 	var col := CollisionShape2D.new()
@@ -87,10 +79,8 @@ func _rebuild_visuals() -> void:
 
 
 func _update_visual_state() -> void:
-	if is_instance_valid(_beam_left) and is_instance_valid(_beam_right):
-		var c := Color(0.2, 1.0, 0.5, 0.95) if is_unlocked else Color(1.0, 0.25, 0.25, 0.9)
-		_beam_left.color = c
-		_beam_right.color = c
+	if is_instance_valid(_gate_sprite):
+		_gate_sprite.frame = 2 if is_unlocked else 0
 	if is_instance_valid(_status_label):
 		_status_label.text = "EXIT [BUKA]" if is_unlocked else "EXIT [KUNCI]"
 		_status_label.modulate = Color(0.35, 1.0, 0.55) if is_unlocked else Color(1.0, 0.45, 0.45)

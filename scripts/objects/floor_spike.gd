@@ -2,9 +2,17 @@
 extends Area2D
 class_name FloorSpike
 
+const SPIKE_SHEET_PATH := "res://assets/sprites/objects/floor_spike_sheet.png"
+
 @export_range(1, 16) var width_tiles: int = 2:
 	set(v):
 		width_tiles = maxi(1, v)
+		if is_node_ready():
+			_rebuild_visuals()
+
+@export_range(0, 2) var variant_index: int = 0:
+	set(v):
+		variant_index = clampi(v, 0, 2)
 		if is_node_ready():
 			_rebuild_visuals()
 
@@ -32,35 +40,17 @@ func _rebuild_visuals() -> void:
 		remove_child(child)
 		child.queue_free()
 
-	var base_plate := ColorRect.new()
-	base_plate.name = "SpikeBase"
-	base_plate.position = Vector2(0.0, 12.0)
-	base_plate.size = Vector2(width_tiles * 16.0, 4.0)
-	base_plate.color = Color(0.22, 0.25, 0.32, 1.0)
-	add_child(base_plate)
-
-	# Two 8px-wide metallic spikes per 16px tile
-	for i in range(width_tiles * 2):
-		var x0 := float(i) * 8.0
-		var spike := Polygon2D.new()
-		spike.name = "Spike_%d" % i
-		spike.polygon = PackedVector2Array([
-			Vector2(x0 + 1.0, 12.0),
-			Vector2(x0 + 4.0, 2.0),
-			Vector2(x0 + 7.0, 12.0),
-		])
-		spike.color = Color(0.75, 0.82, 0.9, 1.0)
-		add_child(spike)
-
-		var tip := Polygon2D.new()
-		tip.name = "SpikeTip_%d" % i
-		tip.polygon = PackedVector2Array([
-			Vector2(x0 + 2.8, 6.0),
-			Vector2(x0 + 4.0, 2.0),
-			Vector2(x0 + 5.2, 6.0),
-		])
-		tip.color = Color(0.95, 0.28, 0.28, 1.0)
-		add_child(tip)
+	var tex: Texture2D = load(SPIKE_SHEET_PATH)
+	for i in range(width_tiles):
+		var sp := Sprite2D.new()
+		sp.name = "SpikeTile_%d" % i
+		sp.centered = false
+		sp.position = Vector2(float(i) * 16.0, 0.0)
+		sp.texture = tex
+		sp.hframes = 3
+		sp.frame = variant_index
+		sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		add_child(sp)
 
 	_col_shape = CollisionShape2D.new()
 	_col_shape.name = "CollisionShape2D"

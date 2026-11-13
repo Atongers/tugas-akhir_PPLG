@@ -48,11 +48,14 @@ const CHAR_SHEET_PATH := "res://assets/sprites/characters/characters.png"
 
 @export var step_offsets: Array[float] = [0.0, 8.0, 16.0, 24.0, 16.0, 8.0, 0.0, -8.0]
 @export_range(50.0, 1000.0, 10.0) var step_interval_ms: float = 100.0
+@export var jammed_mode: bool = false
+@export var jammed_step_offsets: Array[float] = [0.0, -16.0, -32.0, -48.0, -32.0, -16.0]
 
-var _platform_body: StaticBody2D = null
+var _platform_body: AnimatableBody2D = null
 var _passenger_sprite: AnimatedSprite2D = null
 var _cables_root: Node2D = null
 var _last_step: int = -1
+var _target_dy: float = 0.0
 
 
 func _ready() -> void:
@@ -61,24 +64,37 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	var count := maxi(1, step_offsets.size())
+	var active_offsets := jammed_step_offsets if (not is_active and jammed_mode and jammed_step_offsets.size() > 0) else step_offsets
+	var count := maxi(1, active_offsets.size())
 	var step := int(Time.get_ticks_msec() / maxf(10.0, step_interval_ms)) % count
 	if step != _last_step:
 		_last_step = step
 		_apply_step(step)
 
 
+func _physics_process(delta: float) -> void:
+	if Engine.is_editor_hint() or not is_instance_valid(_platform_body):
+		return
+	var step_dist := maxf(24.0, absf(_target_dy - _platform_body.position.y))
+	var speed := step_dist / maxf(0.05, step_interval_ms / 1000.0)
+	_platform_body.position.y = move_toward(_platform_body.position.y, _target_dy, speed * delta)
+
+
 func set_active(active: bool) -> void:
+	if active:
+		jammed_mode = false
 	is_active = active
 
 
 func _apply_step(step: int) -> void:
-	var count := maxi(1, step_offsets.size())
+	var active_offsets := jammed_step_offsets if (not is_active and jammed_mode and jammed_step_offsets.size() > 0) else step_offsets
+	var count := maxi(1, active_offsets.size())
 	var idx := posmod(step, count)
 	var dy: float = 0.0
-	if is_active and step_offsets.size() > 0:
-		dy = float(step_offsets[idx])
-	if is_instance_valid(_platform_body):
+	if (is_active or jammed_mode) and active_offsets.size() > 0:
+		dy = float(active_offsets[idx])
+	_target_dy = dy
+	if Engine.is_editor_hint() and is_instance_valid(_platform_body):
 		_platform_body.position = Vector2(0.0, dy)
 	if is_instance_valid(_passenger_sprite):
 		_passenger_sprite.frame = posmod(idx, 8)
@@ -121,16 +137,18 @@ func _rebuild_visuals() -> void:
 			sp_r.position = Vector2(32.0, cy)
 			_cables_root.add_child(sp_r)
 
-	_platform_body = StaticBody2D.new()
+	_platform_body = AnimatableBody2D.new()
 	_platform_body.name = "PlatformBody"
+	_platform_body.sync_to_physics = true
 	add_child(_platform_body)
 
 	var col := CollisionShape2D.new()
 	var rect := RectangleShape2D.new()
-	rect.size = Vector2(44.0, 6.0)
+	rect.size = Vector2(44.0, 10.0)
 	col.shape = rect
-	col.position = Vector2(24.0, 19.0)
+	col.position = Vector2(24.0, 21.0)
 	col.one_way_collision = true
+	col.one_way_collision_margin = 4.0
 	_platform_body.add_child(col)
 
 	if show_passenger_robot and char_tex:

@@ -1,0 +1,92 @@
+{
+  "project": "CodeVerse: Debugger",
+  "reference_palette_source": "res://assets/tilesets/tileset.png",
+  "grid_px": 16,
+  "assets": [
+    {
+      "path": "res://assets/sprites/objects/exit_gate_sheet.png",
+      "category": "object",
+      "size_px": [96, 48],
+      "frame_px": [32, 48],
+      "frames": 3,
+      "states": ["locked_error_red", "locked_blink_yellow", "unlocked_cyan_green"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/sprites/objects/floor_spike_sheet.png",
+      "category": "object",
+      "size_px": [48, 16],
+      "frame_px": [16, 16],
+      "frames": 3,
+      "states": ["standard", "staggered_variant", "powered_hazard"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/sprites/environment/wiring_cables_sheet.png",
+      "category": "environment",
+      "size_px": [96, 48],
+      "frame_px": [16, 16],
+      "grid": [6, 3],
+      "states": ["neutral_off", "bug_active_error", "solved_cyan_green"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/sprites/environment/sector_props_sheet.png",
+      "category": "environment",
+      "size_px": [128, 64],
+      "frame_px": [16, 16],
+      "grid": [8, 4],
+      "sectors": ["sector_1_dek_bawah", "sector_2_menara_kontrol", "sector_3_terowongan_reaktor", "extra_connectors"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/sprites/vfx/vfx_dust_cyan.png",
+      "category": "vfx",
+      "size_px": [64, 16],
+      "frame_px": [16, 16],
+      "frames": 4,
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/sprites/vfx/vfx_spark_error.png",
+      "category": "vfx",
+      "size_px": [64, 16],
+      "frame_px": [16, 16],
+      "frames": 4,
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/sprites/vfx/vfx_energy_solved.png",
+      "category": "vfx",
+      "size_px": [64, 16],
+      "frame_px": [16, 16],
+      "frames": 4,
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/ui/ui_status_icons_sheet.png",
+      "category": "ui",
+      "size_px": [64, 16],
+      "frame_px": [16, 16],
+      "frames": 4,
+      "icons": ["error_x", "success_check", "active_highlight", "tab_overview_camera"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    }
+  ]
+}

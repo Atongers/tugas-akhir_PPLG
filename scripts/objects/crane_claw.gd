@@ -37,6 +37,8 @@ const ROBOT_Y_OFFSETS: Array[float] = [2.0, -2.0, -4.0, -4.0, -2.0, 0.0, 4.0, 7.
 		if is_node_ready():
 			_rebuild_visuals()
 
+@export var bug_reverse_mode: bool = false
+
 var _claw_sprite: Sprite2D = null
 var _robot_sprite: AnimatedSprite2D = null
 var _last_step: int = -1
@@ -55,17 +57,23 @@ func _process(_delta: float) -> void:
 
 
 func release_robot() -> void:
+	bug_reverse_mode = false
 	has_captured_robot = false
+	if is_instance_valid(_claw_sprite):
+		_claw_sprite.position.x = 0.0
 
 
 func _apply_step(step: int) -> void:
 	var idx := posmod(step, 8)
 	var claw_dy: float = CLAW_Y_OFFSETS[idx] if is_active else CLAW_Y_OFFSETS[0]
 	var rob_dy: float = ROBOT_Y_OFFSETS[idx] if is_active else ROBOT_Y_OFFSETS[0]
+	var bug_dx: float = 0.0
+	if bug_reverse_mode and is_active:
+		bug_dx = -4.0 + (2.0 if idx % 2 == 0 else -2.0)
 	if is_instance_valid(_claw_sprite):
-		_claw_sprite.position = Vector2(0.0, claw_dy)
+		_claw_sprite.position = Vector2(bug_dx, claw_dy)
 	if is_instance_valid(_robot_sprite):
-		_robot_sprite.position = Vector2(-2.0, rob_dy)
+		_robot_sprite.position = Vector2(-2.0 + bug_dx, rob_dy)
 		_robot_sprite.frame = idx
 
 
