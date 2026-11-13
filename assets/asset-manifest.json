@@ -87,6 +87,72 @@
       "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
       "license": "project-internal",
       "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/ui/ui_debug_tools_sheet.png",
+      "category": "ui",
+      "size_px": [128, 16],
+      "frame_px": [16, 16],
+      "frames": 8,
+      "icons": ["output_terminal", "print_log", "step_trace", "watch_var", "breakpoint", "locked_line", "hint_lint", "bug_log"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/ui/ui_terminal_controls_sheet.png",
+      "category": "ui",
+      "size_px": [96, 16],
+      "frame_px": [16, 16],
+      "frames": 6,
+      "icons": ["run", "reset", "speed_1x", "speed_2x", "skip", "close"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/ui/ui_panel_frames_sheet.png",
+      "category": "ui",
+      "size_px": [96, 48],
+      "frame_px": [48, 48],
+      "frames": 2,
+      "variants": ["panel_steel_dark", "panel_cyan_focus"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/ui/ui_line_status_sheet.png",
+      "category": "ui",
+      "size_px": [64, 16],
+      "frame_px": [16, 16],
+      "frames": 4,
+      "icons": ["line_locked", "line_running_yellow", "line_error_red", "line_success_green"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/ui/ui_world_badges_sheet.png",
+      "category": "ui",
+      "size_px": [96, 16],
+      "frame_px": [16, 16],
+      "frames": 6,
+      "worlds": ["world_0_tutorial", "world_1_syntax_shore", "world_2_condition_canyon", "world_3_loop_labyrinth", "world_4_function_foundry", "world_5_list_citadel"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/sprites/characters/lint_companion_sheet.png",
+      "category": "character",
+      "size_px": [64, 16],
+      "frame_px": [16, 16],
+      "frames": 4,
+      "states": ["idle", "hint_thinking", "happy_solved", "alert_error"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
     }
   ]
 }
