@@ -151,6 +151,13 @@ var _bug_log_title: Label = null
 var _bug_log_subtitle: Label = null
 var _level_completed: bool = false
 
+var _hp_bar: ProgressBar = null
+var _hp_label: Label = null
+var _hp_fill_sb: StyleBoxFlat = null
+var _en_bar: ProgressBar = null
+var _en_label: Label = null
+var _en_fill_sb: StyleBoxFlat = null
+
 
 func _ready() -> void:
 	_build_all()
@@ -159,8 +166,30 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if not Engine.is_editor_hint() and is_instance_valid(_bubble_helo_sprite) and dex:
+	if Engine.is_editor_hint():
+		return
+
+	if is_instance_valid(_bubble_helo_sprite) and dex:
 		_bubble_helo_sprite.visible = dex.global_position.distance_to(DEX_SPAWN_POS) < 28.0
+
+	# Fast recharge check near CapsulePods or Terminals
+	if dex and "is_in_recharge_zone" in dex:
+		var near_recharge := false
+		for pod_name in ["Interactables/CapsulePod_Blue", "Interactables/CapsulePod_Orange"]:
+			var pod := get_node_or_null(pod_name)
+			if pod and dex.global_position.distance_to(pod.global_position) < 48.0:
+				near_recharge = true
+				break
+		if not near_recharge:
+			for i in range(1, 5):
+				var term := get_node_or_null("Terminals/Terminal_%d" % i)
+				if term and dex.global_position.distance_to(term.global_position) < 38.0:
+					near_recharge = true
+					break
+		if terminal_overlay and terminal_overlay.has_method("is_open") and terminal_overlay.is_open():
+			near_recharge = true
+
+		dex.is_in_recharge_zone = near_recharge
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -233,6 +262,115 @@ func _setup_hud_extras() -> void:
 		top_bar.offset_top = 6.0
 		top_bar.offset_right = 1142.0
 		top_bar.offset_bottom = 40.0
+
+	# 1. Vitality Bars (HP & Energy)
+	if not _hp_bar:
+		var hp_cluster := HBoxContainer.new()
+		hp_cluster.name = "HPCluster"
+		hp_cluster.alignment = BoxContainer.ALIGNMENT_CENTER
+		hp_cluster.add_theme_constant_override("separation", 6)
+
+		var hp_lbl := Label.new()
+		hp_lbl.text = "HP"
+		hp_lbl.add_theme_font_size_override("font_size", 11)
+		hp_lbl.add_theme_color_override("font_color", Color(0.29, 0.87, 0.5))
+		hp_cluster.add_child(hp_lbl)
+
+		_hp_bar = ProgressBar.new()
+		_hp_bar.name = "HPBar"
+		_hp_bar.custom_minimum_size = Vector2(80, 14)
+		_hp_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_hp_bar.show_percentage = false
+		_hp_bar.max_value = 100.0
+		_hp_bar.value = 100.0
+
+		var hp_bg_sb := StyleBoxFlat.new()
+		hp_bg_sb.bg_color = Color(0.05, 0.08, 0.14, 0.95)
+		hp_bg_sb.border_color = Color(0.2, 0.28, 0.38)
+		hp_bg_sb.set_border_width_all(1)
+		hp_bg_sb.set_corner_radius_all(3)
+		_hp_bar.add_theme_stylebox_override("background", hp_bg_sb)
+
+		_hp_fill_sb = StyleBoxFlat.new()
+		_hp_fill_sb.bg_color = Color(0.14, 0.77, 0.37)
+		_hp_fill_sb.set_corner_radius_all(2)
+		_hp_bar.add_theme_stylebox_override("fill", _hp_fill_sb)
+		hp_cluster.add_child(_hp_bar)
+
+		_hp_label = Label.new()
+		_hp_label.name = "HPValue"
+		_hp_label.text = "100/100"
+		_hp_label.add_theme_font_size_override("font_size", 10)
+		_hp_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
+		hp_cluster.add_child(_hp_label)
+
+		hbox.add_child(hp_cluster)
+
+	if not _en_bar:
+		var en_cluster := HBoxContainer.new()
+		en_cluster.name = "ENCluster"
+		en_cluster.alignment = BoxContainer.ALIGNMENT_CENTER
+		en_cluster.add_theme_constant_override("separation", 6)
+
+		var en_lbl := Label.new()
+		en_lbl.text = "EN"
+		en_lbl.add_theme_font_size_override("font_size", 11)
+		en_lbl.add_theme_color_override("font_color", Color(0.22, 0.74, 0.97))
+		en_cluster.add_child(en_lbl)
+
+		_en_bar = ProgressBar.new()
+		_en_bar.name = "ENBar"
+		_en_bar.custom_minimum_size = Vector2(80, 14)
+		_en_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_en_bar.show_percentage = false
+		_en_bar.max_value = 100.0
+		_en_bar.value = 100.0
+
+		var en_bg_sb := StyleBoxFlat.new()
+		en_bg_sb.bg_color = Color(0.05, 0.08, 0.14, 0.95)
+		en_bg_sb.border_color = Color(0.2, 0.28, 0.38)
+		en_bg_sb.set_border_width_all(1)
+		en_bg_sb.set_corner_radius_all(3)
+		_en_bar.add_theme_stylebox_override("background", en_bg_sb)
+
+		_en_fill_sb = StyleBoxFlat.new()
+		_en_fill_sb.bg_color = Color(0.02, 0.71, 0.83)
+		_en_fill_sb.set_corner_radius_all(2)
+		_en_bar.add_theme_stylebox_override("fill", _en_fill_sb)
+		en_cluster.add_child(_en_bar)
+
+		_en_label = Label.new()
+		_en_label.name = "ENValue"
+		_en_label.text = "100/100"
+		_en_label.add_theme_font_size_override("font_size", 10)
+		_en_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
+		en_cluster.add_child(_en_label)
+
+		hbox.add_child(en_cluster)
+
+		var vit_sep := VSeparator.new()
+		vit_sep.name = "VitalitySep"
+		hbox.add_child(vit_sep)
+
+		# Move Vitality cluster to the front of HBox (before StatusLabel)
+		var hp_node := hbox.get_node_or_null("HPCluster")
+		var en_node := hbox.get_node_or_null("ENCluster")
+		if hp_node:
+			hbox.move_child(hp_node, 0)
+		if en_node:
+			hbox.move_child(en_node, 1)
+		hbox.move_child(vit_sep, 2)
+
+	# Connect Dex signals
+	if dex:
+		if not dex.health_changed.is_connected(_on_dex_health_changed):
+			dex.health_changed.connect(_on_dex_health_changed)
+		if not dex.energy_changed.is_connected(_on_dex_energy_changed):
+			dex.energy_changed.connect(_on_dex_energy_changed)
+		if "health" in dex and "max_health" in dex:
+			_on_dex_health_changed(dex.health, dex.max_health)
+		if "energy" in dex and "max_energy" in dex:
+			_on_dex_energy_changed(dex.energy, dex.max_energy)
 
 	if hud_status:
 		hud_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -404,6 +542,26 @@ func _update_hud_display(objective_text: String = "") -> void:
 		_hud_progress_label.text = "Terminal: %d/%d | [Tab] Kamera" % [solved_count, TOTAL_TERMINALS]
 	if _hud_bug_log_btn:
 		_hud_bug_log_btn.text = "Bug Log (%d/%d) [L]" % [solved_count, TOTAL_TERMINALS]
+
+
+func _on_dex_health_changed(hp: float, max_hp: float) -> void:
+	if _hp_bar:
+		_hp_bar.value = hp
+		_hp_bar.max_value = max_hp
+	if _hp_label:
+		_hp_label.text = "%d/%d" % [int(hp), int(max_hp)]
+	if _hp_fill_sb:
+		_hp_fill_sb.bg_color = Color(0.94, 0.27, 0.27) if hp <= 30.0 else Color(0.14, 0.77, 0.37)
+
+
+func _on_dex_energy_changed(en: float, max_en: float) -> void:
+	if _en_bar:
+		_en_bar.value = en
+		_en_bar.max_value = max_en
+	if _en_label:
+		_en_label.text = "%d/%d" % [int(en), int(max_en)]
+	if _en_fill_sb:
+		_en_fill_sb.bg_color = Color(0.96, 0.62, 0.04) if en <= 20.0 else Color(0.02, 0.71, 0.83)
 
 
 func _build_all() -> void:

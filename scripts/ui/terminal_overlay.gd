@@ -101,6 +101,10 @@ func open_terminal(terminal_id: String, config: Dictionary, total_terminals: int
 	_watch_rtl.clear()
 	_watch_rtl.append_text("[color=#94a3b8]Belum ada variabel yang dievaluasi.[/color]")
 
+	var player = get_tree().get_first_node_in_group("player")
+	if player and "is_in_recharge_zone" in player:
+		player.is_in_recharge_zone = true
+
 	_code_edit.grab_focus()
 
 
@@ -109,6 +113,9 @@ func close_terminal() -> void:
 		return
 	if not _current_terminal_id.is_empty() and is_instance_valid(_code_edit):
 		_saved_codes[_current_terminal_id] = _code_edit.text
+	var player = get_tree().get_first_node_in_group("player")
+	if player and "is_in_recharge_zone" in player:
+		player.is_in_recharge_zone = false
 	_is_open = false
 	visible = false
 	terminal_closed.emit()
@@ -171,6 +178,15 @@ func _clear_line_highlights() -> void:
 func _on_run_pressed() -> void:
 	if _is_running_steps:
 		return
+
+	var player = get_tree().get_first_node_in_group("player")
+	if player and player.has_method("consume_energy"):
+		if player.energy < 10.0:
+			_output_rtl.clear()
+			_output_rtl.append_text("[color=#ef4444][b]BATERAI TIDAK CUKUP:[/b] Butuh minimal 10 Energi untuk menguji kode (Tersisa: %d). Berdirilah sejenak di dekat terminal untuk mengisi daya![/color]" % int(player.energy))
+			return
+		player.consume_energy(10.0)
+
 	_saved_codes[_current_terminal_id] = _code_edit.text
 	_clear_line_highlights()
 

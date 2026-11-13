@@ -47,6 +47,8 @@ func _process(delta: float) -> void:
 
 func _on_body_entered(body: Node2D) -> void:
 	if body is CharacterBody2D or body.name.to_lower().contains("dex"):
+		if body.has_method("take_damage"):
+			body.take_damage(35.0, "plasma")
 		hit_player.emit(body)
 	# Destroy on contact with world or player
 	queue_free()

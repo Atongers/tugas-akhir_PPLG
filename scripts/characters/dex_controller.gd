@@ -2,6 +2,12 @@
 extends CharacterBody2D
 class_name DexController
 
+signal health_changed(current_hp: float, max_hp: float)
+signal energy_changed(current_energy: float, max_energy: float)
+signal player_damaged(amount: float, source: String)
+signal player_died()
+signal player_respawned()
+
 const SPRITESHEET_PATH := "res://assets/sprites/characters/characters.png"
 ## Row 2 in 1-based numbering (index 1: Cyan Antenna Bot)
 const DEX_ROW_INDEX: int = 1
@@ -18,6 +24,21 @@ const WALK_FRAME_COUNT: int = 8
 @export var coyote_time: float = 0.12
 @export var jump_buffer_time: float = 0.12
 
+@export_group("Vitality Stats")
+@export var max_health: float = 100.0
+@export var max_energy: float = 100.0
+@export var sprint_speed_multiplier: float = 1.6
+@export var sprint_energy_cost: float = 15.0 # per second
+@export var passive_energy_regen: float = 8.0 # per second
+@export var fast_recharge_rate: float = 80.0 # per second
+@export var iframe_duration: float = 1.0 # seconds
+
+var health: float = 100.0
+var energy: float = 100.0
+var is_invulnerable: bool = false
+var is_in_recharge_zone: bool = false
+var _iframe_timer: float = 0.0
+
 var checkpoint_position: Vector2 = Vector2.ZERO
 var controls_enabled: bool = true
 
@@ -28,13 +49,28 @@ var _jump_buffer_timer: float = 0.0
 
 
 func _ready() -> void:
+	add_to_group("player")
 	checkpoint_position = global_position
+	health = max_health
+	energy = max_energy
 	_setup_dex_sprite_frames()
+	health_changed.emit(health, max_health)
+	energy_changed.emit(energy, max_energy)
 
 
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
+
+	# Invulnerability frames handling
+	if is_invulnerable:
+		_iframe_timer -= delta
+		if anim_sprite:
+			anim_sprite.modulate.a = 0.35 if int(_iframe_timer * 16.0) % 2 == 0 else 1.0
+		if _iframe_timer <= 0.0:
+			is_invulnerable = false
+			if anim_sprite:
+				anim_sprite.modulate.a = 1.0
 
 	var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity", 980.0) * gravity_scale
 
@@ -61,8 +97,23 @@ func _physics_process(delta: float) -> void:
 	if controls_enabled:
 		direction = Input.get_axis("move_left", "move_right")
 
+	# Sprint and Energy Logic
+	var is_sprinting: bool = false
+	if controls_enabled and (Input.is_action_pressed("sprint") or Input.is_key_pressed(KEY_SHIFT)):
+		if not is_zero_approx(direction) and energy > 0.0:
+			is_sprinting = true
+			energy = maxf(0.0, energy - sprint_energy_cost * delta)
+			energy_changed.emit(energy, max_energy)
+
+	if not is_sprinting and energy < max_energy:
+		var regen_rate := fast_recharge_rate if is_in_recharge_zone else passive_energy_regen
+		energy = minf(max_energy, energy + regen_rate * delta)
+		energy_changed.emit(energy, max_energy)
+
+	var effective_speed := move_speed * (sprint_speed_multiplier if is_sprinting else 1.0)
+
 	if not is_zero_approx(direction):
-		velocity.x = move_toward(velocity.x, direction * move_speed, acceleration * delta)
+		velocity.x = move_toward(velocity.x, direction * effective_speed, acceleration * delta)
 		if anim_sprite:
 			anim_sprite.flip_h = direction < 0.0
 	else:
@@ -73,12 +124,54 @@ func _physics_process(delta: float) -> void:
 
 	# Safe respawn at checkpoint if falling out of bounds
 	if global_position.y > 500.0:
-		respawn_at_checkpoint()
+		take_damage(50.0, "void")
+		if health > 0.0:
+			respawn_at_checkpoint()
+
+
+func take_damage(amount: float, source: String = "") -> void:
+	if is_invulnerable or health <= 0.0:
+		return
+	health = maxf(0.0, health - amount)
+	is_invulnerable = true
+	_iframe_timer = iframe_duration
+	velocity.y = -120.0
+	player_damaged.emit(amount, source)
+	health_changed.emit(health, max_health)
+	if health <= 0.0:
+		_handle_death()
+
+
+func consume_energy(amount: float) -> bool:
+	if energy >= amount:
+		energy = maxf(0.0, energy - amount)
+		energy_changed.emit(energy, max_energy)
+		return true
+	return false
+
+
+func add_energy(amount: float) -> void:
+	energy = minf(max_energy, energy + amount)
+	energy_changed.emit(energy, max_energy)
+
+
+func _handle_death() -> void:
+	player_died.emit()
+	respawn_at_checkpoint()
+	health = max_health
+	energy = max_energy
+	health_changed.emit(health, max_health)
+	energy_changed.emit(energy, max_energy)
 
 
 func respawn_at_checkpoint() -> void:
 	global_position = checkpoint_position
 	velocity = Vector2.ZERO
+	is_invulnerable = true
+	_iframe_timer = iframe_duration * 0.5
+	if anim_sprite:
+		anim_sprite.modulate.a = 1.0
+	player_respawned.emit()
 
 
 func _update_animation(direction: float) -> void:

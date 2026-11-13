@@ -85,7 +85,9 @@ func _update_active_state() -> void:
 func _on_body_entered(body: Node2D) -> void:
 	if not is_active:
 		return
-	if body.has_method("respawn_at_checkpoint"):
+	if body.has_method("take_damage"):
+		body.take_damage(25.0, "laser")
+	elif body.has_method("respawn_at_checkpoint"):
 		body.respawn_at_checkpoint()
 
 
