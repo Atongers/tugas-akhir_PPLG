@@ -208,6 +208,7 @@ var _checkpoint_label: Label = null
 var _checkpoint_aura_timer: float = 0.0
 var _status_icon: TextureRect = null
 var _cam_icon: TextureRect = null
+var _next_level_btn: Button = null
 
 
 func _ready() -> void:
@@ -650,6 +651,15 @@ func _build_bug_log_modal() -> void:
 	btn_row.add_theme_constant_override("separation", 10)
 	vbox.add_child(btn_row)
 
+	_next_level_btn = Button.new()
+	_next_level_btn.text = "▶ Lanjut ke Level 3"
+	_next_level_btn.visible = false
+	_next_level_btn.custom_minimum_size = Vector2(180, 34)
+	_next_level_btn.pressed.connect(func() -> void:
+		get_tree().change_scene_to_file("res://scenes/levels/world_1_syntax_shore/level_3.tscn")
+	)
+	btn_row.add_child(_next_level_btn)
+
 	var menu_btn := Button.new()
 	menu_btn.text = "Kembali ke Main Menu"
 	menu_btn.custom_minimum_size = Vector2(160, 34)
@@ -674,6 +684,8 @@ func _toggle_bug_log_modal(is_level_clear: bool) -> void:
 		_bug_log_modal.visible = false
 		return
 
+	if _next_level_btn:
+		_next_level_btn.visible = is_level_clear
 	if is_level_clear:
 		_bug_log_title.text = "LEVEL 2 SELESAI! — DUNIA 1: SYNTAX SHORE"
 		_bug_log_subtitle.text = "Hebat! Dex & Lint menyelesaikan seluruh 5 Terminal Level 2 (Moderat)! Berikut ringkasan Bug Log:"

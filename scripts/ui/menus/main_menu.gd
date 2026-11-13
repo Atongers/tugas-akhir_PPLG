@@ -426,6 +426,16 @@ func _build_level_select_modal() -> void:
 				get_tree().change_scene_to_file("res://scenes/levels/world_1_syntax_shore/level_2.tscn")
 			)
 			btn_box.add_child(l2_btn)
+
+			var l3_btn := Button.new()
+			l3_btn.text = "Level 3"
+			if _font_semibold:
+				l3_btn.add_theme_font_override("font", _font_semibold)
+			l3_btn.custom_minimum_size = Vector2(96, 34)
+			l3_btn.pressed.connect(func() -> void:
+				get_tree().change_scene_to_file("res://scenes/levels/world_1_syntax_shore/level_3.tscn")
+			)
+			btn_box.add_child(l3_btn)
 		else:
 			var lock_lbl := Label.new()
 			lock_lbl.text = "🔒 Terkunci"

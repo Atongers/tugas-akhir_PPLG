@@ -38,22 +38,50 @@ const ROBOT_Y_OFFSETS: Array[float] = [2.0, -2.0, -4.0, -4.0, -2.0, 0.0, 4.0, 7.
 			_rebuild_visuals()
 
 @export var bug_reverse_mode: bool = false
+@export var horizontal_patrol_enabled: bool = false
+@export var patrol_range_px: float = 224.0
+@export var patrol_speed: float = 46.0
+@export var carry_shield_crate: bool = false:
+	set(v):
+		carry_shield_crate = v
+		if is_node_ready():
+			_rebuild_visuals()
 
 var _claw_sprite: Sprite2D = null
 var _robot_sprite: AnimatedSprite2D = null
+var _shield_crate: StaticBody2D = null
 var _last_step: int = -1
+var _origin_x: float = 0.0
+var _patrol_dir: float = 1.0
 
 
 func _ready() -> void:
+	_origin_x = position.x
 	_rebuild_visuals()
 	_apply_step(0)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	var step := int(Time.get_ticks_msec() / 100.0) % 8
 	if step != _last_step:
 		_last_step = step
 		_apply_step(step)
+
+	if not Engine.is_editor_hint() and horizontal_patrol_enabled and is_active and not bug_reverse_mode:
+		position.x += _patrol_dir * patrol_speed * delta
+		if position.x >= _origin_x + patrol_range_px:
+			position.x = _origin_x + patrol_range_px
+			_patrol_dir = -1.0
+		elif position.x <= _origin_x:
+			position.x = _origin_x
+			_patrol_dir = 1.0
+
+
+func start_shield_patrol() -> void:
+	bug_reverse_mode = false
+	horizontal_patrol_enabled = true
+	if is_instance_valid(_claw_sprite):
+		_claw_sprite.position.x = 0.0
 
 
 func release_robot() -> void:
@@ -75,6 +103,8 @@ func _apply_step(step: int) -> void:
 	if is_instance_valid(_robot_sprite):
 		_robot_sprite.position = Vector2(-2.0 + bug_dx, rob_dy)
 		_robot_sprite.frame = idx
+	if is_instance_valid(_shield_crate):
+		_shield_crate.position = Vector2(-4.0 + bug_dx, claw_dy + 22.0)
 
 
 func _rebuild_visuals() -> void:
@@ -84,6 +114,7 @@ func _rebuild_visuals() -> void:
 
 	_claw_sprite = null
 	_robot_sprite = null
+	_shield_crate = null
 
 	var tile_tex: Texture2D = load(TILESET_PNG_PATH)
 	var char_tex: Texture2D = load(CHAR_SHEET_PATH)
@@ -129,6 +160,31 @@ func _rebuild_visuals() -> void:
 	_claw_sprite.texture = claw_at
 	_claw_sprite.position = Vector2(0.0, CLAW_Y_OFFSETS[0])
 	add_child(_claw_sprite)
+
+	if carry_shield_crate:
+		_shield_crate = StaticBody2D.new()
+		_shield_crate.name = "ShieldCrate"
+		_shield_crate.collision_layer = 1
+		_shield_crate.collision_mask = 0
+		_shield_crate.position = Vector2(-4.0, CLAW_Y_OFFSETS[0] + 22.0)
+
+		var crate_sp := Sprite2D.new()
+		crate_sp.centered = false
+		crate_sp.scale = Vector2(1.5, 1.5)
+		crate_sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		var crate_at := AtlasTexture.new()
+		crate_at.atlas = tile_tex
+		crate_at.region = Rect2(10 * 16, 10 * 16, 16, 16)
+		crate_sp.texture = crate_at
+		_shield_crate.add_child(crate_sp)
+
+		var sc_col := CollisionShape2D.new()
+		var sc_rect := RectangleShape2D.new()
+		sc_rect.size = Vector2(22.0, 24.0)
+		sc_col.shape = sc_rect
+		sc_col.position = Vector2(12.0, 12.0)
+		_shield_crate.add_child(sc_col)
+		add_child(_shield_crate)
 
 
 func _build_flail_frames(tex: Texture2D, row_idx: int) -> SpriteFrames:

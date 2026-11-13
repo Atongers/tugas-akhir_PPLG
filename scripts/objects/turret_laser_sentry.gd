@@ -33,6 +33,8 @@ enum AimMode { FIXED = 0, SWEEP_SCAN = 1, TRACK_PLAYER = 2 }
 @export_range(-90.0, 90.0, 1.0) var sweep_max_deg: float = 45.0
 @export_range(0.1, 4.0, 0.1) var sweep_speed: float = 1.0
 @export_range(50.0, 600.0, 10.0) var max_laser_length: float = 300.0
+@export var laser_damage: float = 25.0
+@export var damage_cooldown: float = 1.0
 
 var _base_sprite: Sprite2D = null
 var _head_pivot: Node2D = null
@@ -43,6 +45,7 @@ var _tracked_body: Node2D = null
 
 var _sweep_time: float = 0.0
 var _current_angle: float = 0.0
+var _damage_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -58,6 +61,7 @@ func _process(delta: float) -> void:
 			_laser_line.visible = false
 		return
 
+	_damage_timer = maxf(0.0, _damage_timer - delta)
 	_update_rotation(delta)
 	_update_laser()
 
@@ -173,6 +177,9 @@ func _update_laser() -> void:
 				if is_instance_valid(_head_sprite):
 					_head_sprite.texture = load(HEAD_RED_PATH)
 				player_tripped.emit(collider)
+			if _damage_timer <= 0.0 and collider.has_method("take_damage"):
+				collider.take_damage(laser_damage, "laser_sentry")
+				_damage_timer = damage_cooldown
 		else:
 			if _laser_line.default_color != COLOR_CYAN_LASER:
 				_laser_line.default_color = COLOR_CYAN_LASER

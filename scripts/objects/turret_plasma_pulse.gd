@@ -30,6 +30,7 @@ enum MountOrientation { FLOOR = 0, CEILING = 1, WALL_LEFT = 2, WALL_RIGHT = 3 }
 
 @export_range(0.4, 10.0, 0.1) var fire_interval: float = 1.6
 @export_range(50.0, 400.0, 10.0) var projectile_speed: float = 130.0
+@export var orb_damage: float = 35.0
 
 var _base_sprite: Sprite2D = null
 var _head_pivot: Node2D = null
@@ -130,6 +131,7 @@ func _fire_projectile() -> void:
 	orb.global_position = spawn_pos
 	orb.direction = fire_dir
 	orb.speed = projectile_speed
+	orb.damage = orb_damage
 	orb.rotation = _head_pivot.global_rotation
 
 	get_tree().current_scene.add_child(orb)

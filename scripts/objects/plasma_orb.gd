@@ -7,6 +7,7 @@ const ORB_TEX_PATH := "res://assets/sprites/objects/turret_plasma_orb.png"
 
 @export var speed: float = 140.0
 @export var lifetime: float = 4.0
+@export var damage: float = 35.0
 
 var direction: Vector2 = Vector2.RIGHT
 var _time_alive: float = 0.0
@@ -48,7 +49,7 @@ func _process(delta: float) -> void:
 func _on_body_entered(body: Node2D) -> void:
 	if body is CharacterBody2D or body.name.to_lower().contains("dex"):
 		if body.has_method("take_damage"):
-			body.take_damage(35.0, "plasma")
+			body.take_damage(damage, "plasma")
 		hit_player.emit(body)
 	# Destroy on contact with world or player
 	queue_free()

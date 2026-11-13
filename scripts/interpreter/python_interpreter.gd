@@ -6,6 +6,7 @@ const KNOWN_FUNCTIONS := [
 	"int",
 	"str",
 	"abs",
+	"len",
 	"matikan_laser_oranye",
 	"aktifkan_elevator",
 	"set_tegangan_laser_biru",
@@ -15,6 +16,11 @@ const KNOWN_FUNCTIONS := [
 	"matikan_scanner",
 	"kalibrasi_crane",
 	"buka_exit_level_2",
+	"atur_plasma",
+	"gerak_crane",
+	"atur_elevator",
+	"buka_firewall",
+	"buka_exit_level_3",
 ]
 
 
@@ -357,6 +363,12 @@ static func _eval_expr(expr: String, line_num: int, env: Dictionary) -> Dictiona
 			if typeof(v) == TYPE_INT or typeof(v) == TYPE_FLOAT:
 				return {"value": abs(v)}
 			return {"error": {"type": "TypeError", "message": "TypeError (Baris %d): abs() membutuhkan angka." % line_num}}
+		elif fn == "len":
+			if typeof(v) == TYPE_STRING:
+				return {"value": v.length()}
+			elif typeof(v) == TYPE_ARRAY:
+				return {"value": v.size()}
+			return {"error": {"type": "TypeError", "message": "TypeError (Baris %d): len() membutuhkan string atau list." % line_num}}
 
 	# 4. String literal
 	if (s.begins_with("\"") and s.ends_with("\"")) or (s.begins_with("'") and s.ends_with("'")):
