@@ -787,8 +787,38 @@ func _on_level_completed() -> void:
 	if _level_completed:
 		return
 	_level_completed = true
+	var sm := get_node_or_null("/root/SaveManager")
+	var newly_unlocked: Array = []
+	if sm and sm.has_method("record_level_completion"):
+		newly_unlocked = sm.call("record_level_completion", "world_1_level_3")
 	_update_hud_display("SELAMAT! Level 3: Syntax Shore (Moderat–Tinggi) selesai!")
 	_toggle_bug_log_modal(true)
+	if not newly_unlocked.is_empty() and is_instance_valid(_bug_log_vbox):
+		var reward_card := PanelContainer.new()
+		var r_sb := StyleBoxFlat.new()
+		r_sb.bg_color = Color(0.16, 0.10, 0.24, 0.96)
+		r_sb.border_color = Color(0.91, 0.47, 0.98, 1.0)
+		r_sb.set_border_width_all(2)
+		r_sb.set_corner_radius_all(6)
+		r_sb.set_content_margin_all(10)
+		reward_card.add_theme_stylebox_override("panel", r_sb)
+		var rv := VBoxContainer.new()
+		rv.add_theme_constant_override("separation", 4)
+		reward_card.add_child(rv)
+		var r_title := Label.new()
+		r_title.text = "🎁 Hadiah Terbuka!"
+		r_title.add_theme_font_size_override("font_size", 14)
+		r_title.add_theme_color_override("font_color", Color(0.91, 0.47, 0.98))
+		rv.add_child(r_title)
+		for item in newly_unlocked:
+			var rl := Label.new()
+			rl.text = "• %s — %s" % [str(item.get("name", "")), str(item.get("desc", ""))]
+			rl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			rl.add_theme_font_size_override("font_size", 12)
+			rl.add_theme_color_override("font_color", Color(0.92, 0.96, 1.0))
+			rv.add_child(rl)
+		_bug_log_vbox.add_child(reward_card)
+		_bug_log_vbox.move_child(reward_card, 0)
 
 
 func _configure_tileset_collisions(ts: TileSet) -> void:

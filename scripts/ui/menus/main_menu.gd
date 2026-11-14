@@ -13,6 +13,9 @@ const TURRET_BASE_PATH := "res://assets/sprites/objects/turret_tripod_base.png"
 const UI_STATUS_ICONS_PATH := "res://assets/ui/ui_status_icons_sheet.png"
 const UI_DEBUG_TOOLS_PATH := "res://assets/ui/ui_debug_tools_sheet.png"
 const UI_WORLD_BADGES_PATH := "res://assets/ui/ui_world_badges_sheet.png"
+const SKIN_PORTRAITS_PATH := "res://assets/ui/skins/dex_skin_portraits.png"
+const SKIN_BADGES_PATH := "res://assets/ui/skins/dex_skin_badges.png"
+const DEFAULT_DEX_SKIN_PATH := "res://assets/sprites/characters/dex_skin_default.png"
 const LEVEL_1_PATH := "res://scenes/levels/world_1_syntax_shore/level_1.tscn"
 
 const COLOR_BG_DEEP := Color(0.028, 0.04, 0.072, 1.0)
@@ -51,15 +54,34 @@ var _lint_base_y: float = 0.0
 var _terminal_glow_lines: Array[ColorRect] = []
 var _dust_motes: Array[Dictionary] = []
 
-# Sleek Pixel-Tech Menu Buttons
+# Sleek Pixel-Tech Menu Buttons & Skin Selector
 var _menu_buttons: Array[Dictionary] = []
+var _skin_cards_box: HBoxContainer = null
+
+
+const SETTINGS_PATH := "user://settings.cfg"
+
+var _user_settings: Dictionary = {
+	"master_vol": 80,
+	"bgm_vol": 75,
+	"sfx_vol": 85,
+	"fullscreen": false,
+}
 
 
 func _ready() -> void:
+	_ensure_audio_buses()
+	_load_user_settings()
 	_load_fonts()
 	_load_diorama_assets()
 	_build_ui()
 	_close_all_modals()
+	if has_node("/root/SaveManager"):
+		var sm := get_node("/root/SaveManager")
+		if sm.has_signal("skin_changed") and not sm.skin_changed.is_connected(_on_save_skin_changed):
+			sm.skin_changed.connect(_on_save_skin_changed)
+		if sm.has_signal("progression_updated") and not sm.progression_updated.is_connected(_on_progression_updated):
+			sm.progression_updated.connect(_on_progression_updated)
 	if not _menu_buttons.is_empty():
 		var first_btn: Button = _menu_buttons[0]["button"]
 		first_btn.call_deferred("grab_focus")
@@ -138,16 +160,7 @@ func _load_fonts() -> void:
 
 
 func _load_diorama_assets() -> void:
-	if ResourceLoader.exists(SPRITESHEET_PATH):
-		var dex_tex: Texture2D = load(SPRITESHEET_PATH)
-		if dex_tex:
-			var y_start: int = 1 * 32 - 2
-			for col in range(4):
-				var at := AtlasTexture.new()
-				at.atlas = dex_tex
-				at.region = Rect2(2 + col * 16, y_start, 16, 32)
-				at.filter_clip = true
-				_dex_atlas_cache.append(at)
+	_reload_dex_skin_frames()
 
 	if ResourceLoader.exists(LINT_SHEET_PATH):
 		var lint_tex: Texture2D = load(LINT_SHEET_PATH)
@@ -158,6 +171,40 @@ func _load_diorama_assets() -> void:
 				at.region = Rect2(col * 16, 0, 16, 16)
 				at.filter_clip = true
 				_lint_atlas_cache.append(at)
+
+
+func _reload_dex_skin_frames() -> void:
+	_dex_atlas_cache.clear()
+	var sheet_path := DEFAULT_DEX_SKIN_PATH
+	if has_node("/root/SaveManager"):
+		var sm := get_node("/root/SaveManager")
+		var meta: Dictionary = sm.call("get_skin_metadata", sm.get("active_skin"))
+		sheet_path = str(meta.get("sheet_path", DEFAULT_DEX_SKIN_PATH))
+	if not ResourceLoader.exists(sheet_path):
+		sheet_path = DEFAULT_DEX_SKIN_PATH
+	if not ResourceLoader.exists(sheet_path):
+		return
+	var dex_tex: Texture2D = load(sheet_path)
+	if not dex_tex:
+		return
+	# 256x192 (32x32 cells), Row 0 Col 0..3 = idle
+	for col in range(4):
+		var at := AtlasTexture.new()
+		at.atlas = dex_tex
+		at.region = Rect2(col * 32, 0, 32, 32)
+		at.filter_clip = true
+		_dex_atlas_cache.append(at)
+
+
+func _on_save_skin_changed(_skin_id: String) -> void:
+	_reload_dex_skin_frames()
+	_rebuild_skin_selector_cards()
+
+
+func _on_progression_updated() -> void:
+	_reload_dex_skin_frames()
+	_rebuild_skin_selector_cards()
+	_refresh_modals_after_progression()
 
 
 func _build_ui() -> void:
@@ -295,7 +342,7 @@ func _build_ui() -> void:
 	root_vbox.add_child(footer_row)
 
 	var ver_lbl := Label.new()
-	ver_lbl.text = "BUILD v0.3.0 • SYNTAX SHORE"
+	ver_lbl.text = "BUILD v1.0 • SYNTAX SHORE"
 	ver_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if _font_regular:
 		ver_lbl.add_theme_font_override("font", _font_regular)
@@ -311,6 +358,9 @@ func _build_ui() -> void:
 	hint_lbl.add_theme_font_size_override("font_size", 11)
 	hint_lbl.add_theme_color_override("font_color", Color(0.492, 0.555, 0.645))
 	footer_row.add_child(hint_lbl)
+
+	# 3.5 Interactive Skin Selector Bar (Bottom-Right Diorama)
+	_build_skin_selector_overlay()
 
 	# 4. Modal Dimmer Overlay
 	_modal_dimmer = ColorRect.new()
@@ -531,11 +581,11 @@ func _build_diorama_layers() -> void:
 		shaft_anchor.add_child(mote)
 		_dust_motes.append({"node": mote, "base_pos": base_p, "phase": float(i) * 0.9, "speed": 0.65 + float(i % 3) * 0.25})
 
-	# Right-side Chamber Deck Floor (bottom 22%)
+	# Right-side Chamber Deck Floor (bottom 27%)
 	var floor_deck := ColorRect.new()
 	floor_deck.anchor_left = 0.38
 	floor_deck.anchor_right = 1.05
-	floor_deck.anchor_top = 0.78
+	floor_deck.anchor_top = 0.73
 	floor_deck.anchor_bottom = 1.08
 	floor_deck.color = Color(0.067, 0.094, 0.153, 1.0)
 	floor_deck.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -561,8 +611,8 @@ func _build_diorama_layers() -> void:
 		var deck_right_anchor := Control.new()
 		deck_right_anchor.anchor_left = 1.0
 		deck_right_anchor.anchor_right = 1.0
-		deck_right_anchor.anchor_top = 0.78
-		deck_right_anchor.anchor_bottom = 0.78
+		deck_right_anchor.anchor_top = 0.73
+		deck_right_anchor.anchor_bottom = 0.73
 		deck_right_anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_layer_mid.add_child(deck_right_anchor)
 		deck_right_anchor.add_child(turret_sp)
@@ -577,8 +627,8 @@ func _build_diorama_layers() -> void:
 	var hero_anchor := Control.new()
 	hero_anchor.anchor_left = 0.76
 	hero_anchor.anchor_right = 0.76
-	hero_anchor.anchor_top = 0.78
-	hero_anchor.anchor_bottom = 0.78
+	hero_anchor.anchor_top = 0.73
+	hero_anchor.anchor_bottom = 0.73
 	hero_anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_layer_hero.add_child(hero_anchor)
 
@@ -677,6 +727,185 @@ func _build_diorama_layers() -> void:
 	right_fg_anchor.add_child(r_cable_2)
 
 
+func _build_skin_selector_overlay() -> void:
+	var panel := PanelContainer.new()
+	panel.name = "SkinSelectorPanel"
+	panel.anchor_left = 1.0
+	panel.anchor_right = 1.0
+	panel.anchor_top = 1.0
+	panel.anchor_bottom = 1.0
+	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	panel.offset_right = -56.0
+	panel.offset_bottom = -64.0
+
+	var p_sb := StyleBoxFlat.new()
+	p_sb.bg_color = Color(0.04, 0.06, 0.10, 0.88)
+	p_sb.border_color = COLOR_BORDER
+	p_sb.set_border_width_all(1)
+	p_sb.set_corner_radius_all(6)
+	p_sb.content_margin_left = 10
+	p_sb.content_margin_right = 10
+	p_sb.content_margin_top = 8
+	p_sb.content_margin_bottom = 8
+	panel.add_theme_stylebox_override("panel", p_sb)
+	add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 6)
+	panel.add_child(vbox)
+
+	var hdr := Label.new()
+	hdr.text = "UNIT SKIN SELECTOR"
+	if _font_bold:
+		hdr.add_theme_font_override("font", _font_bold)
+	hdr.add_theme_font_size_override("font_size", 11)
+	hdr.add_theme_color_override("font_color", COLOR_CYAN)
+	vbox.add_child(hdr)
+
+	_skin_cards_box = HBoxContainer.new()
+	_skin_cards_box.add_theme_constant_override("separation", 8)
+	vbox.add_child(_skin_cards_box)
+
+	_rebuild_skin_selector_cards()
+
+
+func _rebuild_skin_selector_cards() -> void:
+	if not is_instance_valid(_skin_cards_box):
+		return
+	for ch in _skin_cards_box.get_children():
+		ch.queue_free()
+
+	var sm: Node = get_node_or_null("/root/SaveManager")
+	var skin_ids: Array[String] = ["default", "volt_scout", "plasma_sentinel"]
+	if sm and sm.has_method("get_all_skin_ids"):
+		skin_ids = sm.call("get_all_skin_ids")
+
+	var portraits_tex: Texture2D = load(SKIN_PORTRAITS_PATH) if ResourceLoader.exists(SKIN_PORTRAITS_PATH) else null
+	var badges_tex: Texture2D = load(SKIN_BADGES_PATH) if ResourceLoader.exists(SKIN_BADGES_PATH) else null
+
+	for sid in skin_ids:
+		var meta: Dictionary = sm.call("get_skin_metadata", sid) if sm else {"name": sid, "col_index": 0, "trail_color": COLOR_CYAN, "unlock_hint": ""}
+		var unlocked: bool = sm.call("is_skin_unlocked", sid) if sm else (sid == "default")
+		var is_active: bool = (str(sm.get("active_skin")) == sid) if sm else (sid == "default")
+		var col_idx: int = int(meta.get("col_index", 0))
+		var accent: Color = meta.get("trail_color", COLOR_CYAN)
+
+		var card := Button.new()
+		card.custom_minimum_size = Vector2(158, 60)
+		card.disabled = not unlocked
+		card.tooltip_text = str(meta.get("name", sid)) if unlocked else ("Terkunci: " + str(meta.get("unlock_hint", "")))
+
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.08, 0.12, 0.19, 0.96) if is_active else (Color(0.06, 0.08, 0.13, 0.9) if unlocked else Color(0.04, 0.05, 0.08, 0.85))
+		sb.border_color = accent if is_active else (COLOR_BORDER if unlocked else Color(0.16, 0.19, 0.25, 0.6))
+		sb.set_border_width_all(2 if is_active else 1)
+		sb.set_corner_radius_all(5)
+		sb.content_margin_left = 6
+		sb.content_margin_right = 6
+		sb.content_margin_top = 5
+		sb.content_margin_bottom = 5
+		card.add_theme_stylebox_override("normal", sb)
+		card.add_theme_stylebox_override("hover", sb)
+		card.add_theme_stylebox_override("pressed", sb)
+		card.add_theme_stylebox_override("disabled", sb)
+
+		var hbox := HBoxContainer.new()
+		hbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+		hbox.offset_left = 6
+		hbox.offset_right = -6
+		hbox.offset_top = 5
+		hbox.offset_bottom = -5
+		hbox.add_theme_constant_override("separation", 6)
+		hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(hbox)
+
+		if portraits_tex:
+			var prt := TextureRect.new()
+			var at := AtlasTexture.new()
+			at.atlas = portraits_tex
+			at.region = Rect2(col_idx * 64, 0, 64, 64)
+			at.filter_clip = true
+			prt.texture = at
+			prt.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			prt.custom_minimum_size = Vector2(44, 44)
+			prt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			prt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			prt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			prt.modulate = Color.WHITE if unlocked else Color(0.35, 0.38, 0.45, 0.7)
+			prt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			hbox.add_child(prt)
+
+		var iv := VBoxContainer.new()
+		iv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		iv.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		iv.add_theme_constant_override("separation", 2)
+		iv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hbox.add_child(iv)
+
+		var name_lbl := Label.new()
+		name_lbl.text = str(meta.get("name", sid))
+		name_lbl.clip_text = true
+		name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		name_lbl.custom_minimum_size = Vector2(72, 0)
+		if _font_semibold:
+			name_lbl.add_theme_font_override("font", _font_semibold)
+		name_lbl.add_theme_font_size_override("font_size", 10)
+		name_lbl.add_theme_color_override("font_color", Color.WHITE if unlocked else Color(0.5, 0.55, 0.65))
+		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		iv.add_child(name_lbl)
+
+		var status_row := HBoxContainer.new()
+		status_row.add_theme_constant_override("separation", 4)
+		status_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		iv.add_child(status_row)
+
+		if badges_tex:
+			var b_rect := TextureRect.new()
+			var b_at := AtlasTexture.new()
+			b_at.atlas = badges_tex
+			b_at.region = Rect2((col_idx if unlocked else 3) * 16, 0, 16, 16)
+			b_at.filter_clip = true
+			b_rect.texture = b_at
+			b_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			b_rect.custom_minimum_size = Vector2(14, 14)
+			b_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			b_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			status_row.add_child(b_rect)
+
+		var st_lbl := Label.new()
+		st_lbl.text = "AKTIF" if is_active else ("PILIH" if unlocked else str(meta.get("unlock_hint", "Terkunci")))
+		st_lbl.clip_text = true
+		st_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		st_lbl.custom_minimum_size = Vector2(54, 0)
+		if _font_regular:
+			st_lbl.add_theme_font_override("font", _font_regular)
+		st_lbl.add_theme_font_size_override("font_size", 9)
+		st_lbl.add_theme_color_override("font_color", accent if is_active else (COLOR_GREEN if unlocked else Color(0.55, 0.6, 0.7)))
+		st_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		status_row.add_child(st_lbl)
+
+		if unlocked:
+			var target_sid := sid
+			card.pressed.connect(func() -> void:
+				if sm and sm.has_method("equip_skin"):
+					sm.call("equip_skin", target_sid)
+			)
+
+		_skin_cards_box.add_child(card)
+
+
+func _refresh_modals_after_progression() -> void:
+	if is_instance_valid(_level_select_modal):
+		_level_select_modal.queue_free()
+		_level_select_modal = null
+	if is_instance_valid(_bug_log_modal):
+		_bug_log_modal.queue_free()
+		_bug_log_modal = null
+	_build_level_select_modal()
+	_build_bug_log_modal()
+
+
 func _build_level_select_modal() -> void:
 	_level_select_modal = _create_base_modal("PILIH DUNIA DAN LEVEL", Vector2(740, 460))
 	add_child(_level_select_modal)
@@ -761,33 +990,38 @@ func _build_level_select_modal() -> void:
 		iv.add_child(w_concept)
 
 		if is_unlocked:
+			var sm: Node = get_node_or_null("/root/SaveManager")
+			var l1_done: bool = sm and sm.call("is_level_completed", "world_1_level_1")
+			var l2_done: bool = sm and sm.call("is_level_completed", "world_1_level_2")
+			var l3_done: bool = sm and sm.call("is_level_completed", "world_1_level_3")
+
 			var btn_box := HBoxContainer.new()
 			btn_box.add_theme_constant_override("separation", 8)
 			ih.add_child(btn_box)
 
 			var play_btn := Button.new()
-			play_btn.text = "Level 1"
+			play_btn.text = "✓ Level 1" if l1_done else "Level 1"
 			if _font_semibold:
 				play_btn.add_theme_font_override("font", _font_semibold)
-			play_btn.custom_minimum_size = Vector2(96, 34)
+			play_btn.custom_minimum_size = Vector2(104, 34)
 			play_btn.pressed.connect(_on_continue_pressed)
 			btn_box.add_child(play_btn)
 
 			var l2_btn := Button.new()
-			l2_btn.text = "Level 2"
+			l2_btn.text = "✓ Level 2" if l2_done else "Level 2"
 			if _font_semibold:
 				l2_btn.add_theme_font_override("font", _font_semibold)
-			l2_btn.custom_minimum_size = Vector2(96, 34)
+			l2_btn.custom_minimum_size = Vector2(104, 34)
 			l2_btn.pressed.connect(func() -> void:
 				get_tree().change_scene_to_file("res://scenes/levels/world_1_syntax_shore/level_2.tscn")
 			)
 			btn_box.add_child(l2_btn)
 
 			var l3_btn := Button.new()
-			l3_btn.text = "Level 3"
+			l3_btn.text = "✓ Level 3" if l3_done else "Level 3"
 			if _font_semibold:
 				l3_btn.add_theme_font_override("font", _font_semibold)
-			l3_btn.custom_minimum_size = Vector2(96, 34)
+			l3_btn.custom_minimum_size = Vector2(104, 34)
 			l3_btn.pressed.connect(func() -> void:
 				get_tree().change_scene_to_file("res://scenes/levels/world_1_syntax_shore/level_3.tscn")
 			)
@@ -849,15 +1083,65 @@ func _build_bug_log_modal() -> void:
 			"world": "Dunia 1: Konsep Lanjutan",
 			"sample_bad": "rata = total / 0",
 			"sample_good": "rata = total / jumlah_item",
-			"desc": "Angka pembagi tidak boleh bernilai nol dalam operasi matematika komputer."
+			"desc": "Angka pembagi tidak boleh bernilai nol dalam operasi matematika komputer.",
+			"unlock": "Tersedia sejak awal"
+		},
+		{
+			"id": "BUG-06",
+			"name": "PEMDAS Operator Precedence",
+			"world": "Dunia 1: Level 2 (Terminal 1)",
+			"sample_bad": "total = a + b * c",
+			"sample_good": "total = (a + b) * c",
+			"desc": "Perkalian (*) dijalankan sebelum penjumlahan (+) kecuali diberi tanda kurung (...).",
+			"unlock": "Tamatkan Level 2"
+		},
+		{
+			"id": "BUG-07",
+			"name": "Modulo Off-by-One / Zero Remainder",
+			"world": "Dunia 1: Level 2 (Terminal 2)",
+			"sample_bad": "tinggi = (base + off) % 4",
+			"sample_good": "tinggi = (base + off) % 5",
+			"desc": "Pembagi modulo (%) yang salah menyebabkan siklus lift berhenti di sisa 0 atau kurang 1 langkah.",
+			"unlock": "Tamatkan Level 2"
+		},
+		{
+			"id": "BUG-08",
+			"name": "Variable Overwrite / Shadowing",
+			"world": "Dunia 1: Level 2 (Terminal 3)",
+			"sample_bad": "daya = 120\ndaya = 0",
+			"sample_good": "daya = 120",
+			"desc": "Nilai variabel yang sudah benar tertimpa ulang oleh assignment berikutnya sebelum dipakai.",
+			"unlock": "Tamatkan Level 2"
+		},
+		{
+			"id": "BUG-09",
+			"name": "Integer Division (//) & abs()",
+			"world": "Dunia 1: Level 2 T4 / Level 3 T1",
+			"sample_bad": "langkah = -1 * (28 / 2)",
+			"sample_good": "langkah = abs(28 // 2)",
+			"desc": "Pembagian '/' menghasilkan float, sedangkan '//' menghasilkan bilangan bulat dan abs() mempositifkan arah.",
+			"unlock": "Tamatkan Level 3"
+		},
+		{
+			"id": "BUG-10",
+			"name": "String-to-Int Type Casting (str() / int())",
+			"world": "Dunia 1: Level 3 (Terminal 4 & 5)",
+			"sample_bad": "kode = \"PORT_\" + 8080",
+			"sample_good": "kode = \"PORT_\" + str(8080)",
+			"desc": "Menggabungkan string dan angka memicu TypeError; konversi angka terlebih dahulu dengan str(...).",
+			"unlock": "Tamatkan Level 3"
 		}
 	]
 
+	var sm: Node = get_node_or_null("/root/SaveManager")
 	for e in entries:
+		var bug_id: String = str(e["id"])
+		var is_unlocked: bool = sm.call("is_bug_log_unlocked", bug_id) if sm else true
+
 		var card := PanelContainer.new()
 		var c_style := StyleBoxFlat.new()
-		c_style.bg_color = Color(0.1, 0.13, 0.19, 0.95)
-		c_style.border_color = COLOR_AMBER
+		c_style.bg_color = Color(0.1, 0.13, 0.19, 0.95) if is_unlocked else Color(0.06, 0.075, 0.11, 0.85)
+		c_style.border_color = COLOR_AMBER if is_unlocked else Color(0.22, 0.26, 0.34, 0.7)
 		c_style.set_border_width_all(1)
 		c_style.set_corner_radius_all(6)
 		c_style.content_margin_left = 14
@@ -871,37 +1155,38 @@ func _build_bug_log_modal() -> void:
 		card.add_child(cv)
 
 		var h := Label.new()
-		h.text = "[%s] %s" % [str(e["id"]), str(e["name"])]
+		h.text = "[%s] %s" % [bug_id, str(e["name"]) if is_unlocked else (str(e["name"]) + " (🔒 Terkunci)")]
 		if _font_bold:
 			h.add_theme_font_override("font", _font_bold)
 		h.add_theme_font_size_override("font_size", 13)
-		h.add_theme_color_override("font_color", COLOR_AMBER)
+		h.add_theme_color_override("font_color", COLOR_AMBER if is_unlocked else Color(0.55, 0.6, 0.7))
 		cv.add_child(h)
 
 		var w_lbl := Label.new()
-		w_lbl.text = "Lokasi: " + str(e["world"])
+		w_lbl.text = "Lokasi: %s" % str(e["world"]) if is_unlocked else ("Syarat Terbuka: " + str(e.get("unlock", "Selesaikan level")))
 		if _font_semibold:
 			w_lbl.add_theme_font_override("font", _font_semibold)
 		w_lbl.add_theme_font_size_override("font_size", 11)
-		w_lbl.add_theme_color_override("font_color", COLOR_CYAN)
+		w_lbl.add_theme_color_override("font_color", COLOR_CYAN if is_unlocked else Color(0.5, 0.56, 0.66))
 		cv.add_child(w_lbl)
 
-		var code_lbl := Label.new()
-		code_lbl.text = "Salah : %s\nBenar : %s" % [str(e["sample_bad"]), str(e["sample_good"])]
-		if _font_regular:
-			code_lbl.add_theme_font_override("font", _font_regular)
-		code_lbl.add_theme_font_size_override("font_size", 12)
-		code_lbl.add_theme_color_override("font_color", COLOR_GREEN)
-		cv.add_child(code_lbl)
+		if is_unlocked:
+			var code_lbl := Label.new()
+			code_lbl.text = "Salah : %s\nBenar : %s" % [str(e["sample_bad"]), str(e["sample_good"])]
+			if _font_regular:
+				code_lbl.add_theme_font_override("font", _font_regular)
+			code_lbl.add_theme_font_size_override("font_size", 12)
+			code_lbl.add_theme_color_override("font_color", COLOR_GREEN)
+			cv.add_child(code_lbl)
 
-		var d_lbl := Label.new()
-		d_lbl.text = "Penjelasan: " + str(e["desc"])
-		if _font_regular:
-			d_lbl.add_theme_font_override("font", _font_regular)
-		d_lbl.add_theme_font_size_override("font_size", 11)
-		d_lbl.add_theme_color_override("font_color", Color(0.82, 0.88, 0.95))
-		d_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		cv.add_child(d_lbl)
+			var d_lbl := Label.new()
+			d_lbl.text = "Penjelasan: " + str(e["desc"])
+			if _font_regular:
+				d_lbl.add_theme_font_override("font", _font_regular)
+			d_lbl.add_theme_font_size_override("font_size", 11)
+			d_lbl.add_theme_color_override("font_color", Color(0.82, 0.88, 0.95))
+			d_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			cv.add_child(d_lbl)
 
 		vbox.add_child(card)
 
@@ -927,9 +1212,9 @@ func _build_settings_modal() -> void:
 	a_vbox.add_theme_constant_override("separation", 8)
 	a_panel.add_child(a_vbox)
 
-	a_vbox.add_child(_create_slider_row("Master Volume", 80))
-	a_vbox.add_child(_create_slider_row("Musik Latar (BGM)", 75))
-	a_vbox.add_child(_create_slider_row("Efek Suara (SFX)", 85))
+	a_vbox.add_child(_create_slider_row("Master Volume", int(_user_settings.get("master_vol", 80)), "Master", "master_vol"))
+	a_vbox.add_child(_create_slider_row("Musik Latar (BGM)", int(_user_settings.get("bgm_vol", 75)), "BGM", "bgm_vol"))
+	a_vbox.add_child(_create_slider_row("Efek Suara (SFX)", int(_user_settings.get("sfx_vol", 85)), "SFX", "sfx_vol"))
 
 	# Section 2: Display
 	var d_header := Label.new()
@@ -947,6 +1232,7 @@ func _build_settings_modal() -> void:
 
 	var fs_check := CheckButton.new()
 	fs_check.text = "Layar Penuh (Fullscreen Mode)"
+	fs_check.button_pressed = (DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN)
 	if _font_semibold:
 		fs_check.add_theme_font_override("font", _font_semibold)
 	fs_check.add_theme_font_size_override("font_size", 12)
@@ -955,6 +1241,8 @@ func _build_settings_modal() -> void:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 		else:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		_user_settings["fullscreen"] = toggled_on
+		_save_user_settings()
 	)
 	d_hbox.add_child(fs_check)
 
@@ -977,8 +1265,131 @@ func _build_settings_modal() -> void:
 	c_lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 0.96))
 	c_panel.add_child(c_lbl)
 
+	# Section 4: Data & Progres Reward
+	var p_header := Label.new()
+	p_header.text = "💾 PROGRES & DATA SIMPAN"
+	if _font_bold:
+		p_header.add_theme_font_override("font", _font_bold)
+	p_header.add_theme_font_size_override("font_size", 14)
+	p_header.add_theme_color_override("font_color", Color(0.97, 0.45, 0.45))
+	vbox.add_child(p_header)
 
-func _create_slider_row(label_text: String, default_val: int) -> HBoxContainer:
+	var p_panel := _create_sub_box()
+	vbox.add_child(p_panel)
+	var p_vbox := VBoxContainer.new()
+	p_vbox.add_theme_constant_override("separation", 8)
+	p_panel.add_child(p_vbox)
+
+	var p_desc := Label.new()
+	p_desc.text = "Hapus progres level selesai, skin terbuka, debug tools, dan Bug Log (kembali ke kondisi awal)."
+	if _font_regular:
+		p_desc.add_theme_font_override("font", _font_regular)
+	p_desc.add_theme_font_size_override("font_size", 11)
+	p_desc.add_theme_color_override("font_color", Color(0.8, 0.85, 0.92))
+	p_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	p_vbox.add_child(p_desc)
+
+	var p_row := HBoxContainer.new()
+	p_row.add_theme_constant_override("separation", 10)
+	p_vbox.add_child(p_row)
+
+	var reset_btn := Button.new()
+	reset_btn.text = "↺ Reset Progres Reward"
+	reset_btn.custom_minimum_size = Vector2(200, 32)
+	if _font_semibold:
+		reset_btn.add_theme_font_override("font", _font_semibold)
+	p_row.add_child(reset_btn)
+
+	var confirm_row := HBoxContainer.new()
+	confirm_row.visible = false
+	confirm_row.add_theme_constant_override("separation", 8)
+	p_row.add_child(confirm_row)
+
+	var confirm_lbl := Label.new()
+	confirm_lbl.text = "Yakin reset?"
+	if _font_semibold:
+		confirm_lbl.add_theme_font_override("font", _font_semibold)
+	confirm_lbl.add_theme_font_size_override("font_size", 12)
+	confirm_lbl.add_theme_color_override("font_color", COLOR_AMBER)
+	confirm_row.add_child(confirm_lbl)
+
+	var yes_btn := Button.new()
+	yes_btn.text = "Ya, Reset"
+	yes_btn.custom_minimum_size = Vector2(90, 30)
+	confirm_row.add_child(yes_btn)
+
+	var no_btn := Button.new()
+	no_btn.text = "Batal"
+	no_btn.custom_minimum_size = Vector2(72, 30)
+	confirm_row.add_child(no_btn)
+
+	var done_lbl := Label.new()
+	done_lbl.text = "✓ Progres direset!"
+	done_lbl.visible = false
+	if _font_semibold:
+		done_lbl.add_theme_font_override("font", _font_semibold)
+	done_lbl.add_theme_font_size_override("font_size", 12)
+	done_lbl.add_theme_color_override("font_color", COLOR_GREEN)
+	p_row.add_child(done_lbl)
+
+	reset_btn.pressed.connect(func() -> void:
+		confirm_row.visible = true
+		done_lbl.visible = false
+	)
+	no_btn.pressed.connect(func() -> void:
+		confirm_row.visible = false
+	)
+	yes_btn.pressed.connect(func() -> void:
+		var sm := get_node_or_null("/root/SaveManager")
+		if sm and sm.has_method("reset_progression"):
+			sm.call("reset_progression")
+		confirm_row.visible = false
+		done_lbl.visible = true
+	)
+
+
+func _ensure_audio_buses() -> void:
+	for bus_name in ["BGM", "SFX"]:
+		if AudioServer.get_bus_index(bus_name) == -1:
+			var idx := AudioServer.get_bus_count()
+			AudioServer.add_bus(idx)
+			AudioServer.set_bus_name(idx, bus_name)
+			AudioServer.set_bus_send(idx, "Master")
+
+
+func _apply_bus_volume(bus_name: String, pct: float) -> void:
+	var bus_idx := AudioServer.get_bus_index(bus_name)
+	if bus_idx < 0:
+		return
+	var db := linear_to_db(pct / 100.0) if pct > 0.0 else -80.0
+	AudioServer.set_bus_volume_db(bus_idx, db)
+
+
+func _load_user_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) == OK:
+		_user_settings["master_vol"] = int(cfg.get_value("audio", "master_vol", 80))
+		_user_settings["bgm_vol"] = int(cfg.get_value("audio", "bgm_vol", 75))
+		_user_settings["sfx_vol"] = int(cfg.get_value("audio", "sfx_vol", 85))
+		_user_settings["fullscreen"] = bool(cfg.get_value("display", "fullscreen", false))
+
+	_apply_bus_volume("Master", float(_user_settings["master_vol"]))
+	_apply_bus_volume("BGM", float(_user_settings["bgm_vol"]))
+	_apply_bus_volume("SFX", float(_user_settings["sfx_vol"]))
+	if bool(_user_settings["fullscreen"]):
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+func _save_user_settings() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("audio", "master_vol", int(_user_settings.get("master_vol", 80)))
+	cfg.set_value("audio", "bgm_vol", int(_user_settings.get("bgm_vol", 75)))
+	cfg.set_value("audio", "sfx_vol", int(_user_settings.get("sfx_vol", 85)))
+	cfg.set_value("display", "fullscreen", bool(_user_settings.get("fullscreen", false)))
+	cfg.save(SETTINGS_PATH)
+
+
+func _create_slider_row(label_text: String, default_val: int, bus_name: String = "Master", setting_key: String = "") -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 
@@ -1008,10 +1419,10 @@ func _create_slider_row(label_text: String, default_val: int) -> HBoxContainer:
 
 	slider.value_changed.connect(func(v: float) -> void:
 		val_lbl.text = "%d%%" % int(v)
-		# Update master audio bus volume if bus exists
-		if AudioServer.get_bus_count() > 0:
-			var db := linear_to_db(v / 100.0) if v > 0.0 else -80.0
-			AudioServer.set_bus_volume_db(0, db)
+		_apply_bus_volume(bus_name, v)
+		if not setting_key.is_empty():
+			_user_settings[setting_key] = int(v)
+			_save_user_settings()
 	)
 
 	return row

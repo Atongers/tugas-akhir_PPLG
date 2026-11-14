@@ -150,6 +150,7 @@ var _bug_log_vbox: VBoxContainer = null
 var _bug_log_title: Label = null
 var _bug_log_subtitle: Label = null
 var _next_level_btn: Button = null
+var _menu_btn: Button = null
 var _level_completed: bool = false
 
 var _hp_bar: ProgressBar = null
@@ -201,6 +202,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_toggle_camera_mode()
 		elif event.keycode == KEY_L:
 			_toggle_bug_log_modal(false)
+		elif event.keycode == KEY_ESCAPE:
+			if _bug_log_modal and _bug_log_modal.visible:
+				_bug_log_modal.visible = false
+				get_viewport().set_input_as_handled()
 
 
 func _toggle_camera_mode() -> void:
@@ -236,6 +241,8 @@ func _setup_runtime() -> void:
 	if exit_gate:
 		if exit_gate.has_method("set_unlocked"):
 			exit_gate.call("set_unlocked", false)
+		if exit_gate.has_signal("player_reached_exit") and not exit_gate.player_reached_exit.is_connected(_on_level_completed):
+			exit_gate.player_reached_exit.connect(_on_level_completed)
 		if exit_gate.has_signal("level_completed") and not exit_gate.level_completed.is_connected(_on_level_completed):
 			exit_gate.level_completed.connect(_on_level_completed)
 
@@ -259,9 +266,10 @@ func _setup_hud_extras() -> void:
 		return
 	var top_bar: PanelContainer = get_node_or_null("HUD/TopBar")
 	if top_bar:
+		top_bar.set_anchors_preset(Control.PRESET_TOP_WIDE)
 		top_bar.offset_left = 10.0
 		top_bar.offset_top = 6.0
-		top_bar.offset_right = 1142.0
+		top_bar.offset_right = -10.0
 		top_bar.offset_bottom = 40.0
 
 	# 1. Vitality Bars (HP & Energy)
@@ -375,6 +383,9 @@ func _setup_hud_extras() -> void:
 
 	if hud_status:
 		hud_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hud_status.clip_text = true
+		hud_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		hud_status.custom_minimum_size = Vector2(200, 0)
 		hud_status.add_theme_font_size_override("font_size", 13)
 
 	if not _hud_progress_label:
@@ -467,6 +478,15 @@ func _build_bug_log_modal() -> void:
 	btn_row.add_theme_constant_override("separation", 10)
 	outer_vbox.add_child(btn_row)
 
+	_menu_btn = Button.new()
+	_menu_btn.text = "Kembali ke Main Menu"
+	_menu_btn.custom_minimum_size = Vector2(180, 34)
+	_menu_btn.visible = false
+	_menu_btn.pressed.connect(func() -> void:
+		get_tree().change_scene_to_file("res://scenes/ui/menus/main_menu.tscn")
+	)
+	btn_row.add_child(_menu_btn)
+
 	_next_level_btn = Button.new()
 	_next_level_btn.text = "▶ Lanjut ke Level 2"
 	_next_level_btn.custom_minimum_size = Vector2(190, 34)
@@ -490,6 +510,8 @@ func _toggle_bug_log_modal(is_level_clear: bool) -> void:
 		_bug_log_modal.visible = false
 		return
 
+	if _menu_btn:
+		_menu_btn.visible = is_level_clear
 	if _next_level_btn:
 		_next_level_btn.visible = is_level_clear
 
@@ -507,6 +529,7 @@ func _toggle_bug_log_modal(is_level_clear: bool) -> void:
 	if _bug_log_entries.is_empty():
 		var empty_lbl := Label.new()
 		empty_lbl.text = "Belum ada bug yang tercatat. Perbaiki kode di Terminal [E] untuk mengisi Bug Log!"
+		empty_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		empty_lbl.add_theme_color_override("font_color", Color(0.7, 0.75, 0.82))
 		_bug_log_vbox.add_child(empty_lbl)
 	else:
@@ -680,6 +703,9 @@ func _on_level_action_triggered(action_name: String, arg_value: Variant) -> void
 				var crane: Node = get_node_or_null("Programmable/CraneClaw")
 				if crane and crane.has_method("release_robot"):
 					crane.call("release_robot")
+				var sensor: Node = get_node_or_null("Interactables/RedEyeSensor")
+				if sensor and "is_active" in sensor:
+					sensor.is_active = false
 				var exit_gate: Node = get_node_or_null("Interactables/ExitGate")
 				if exit_gate and exit_gate.has_method("set_unlocked"):
 					exit_gate.call("set_unlocked", true)
@@ -690,6 +716,16 @@ func _on_terminal_solved(terminal_id: String, bug_log_entry: Dictionary) -> void
 		_solved_terminals[terminal_id] = true
 		if not bug_log_entry.is_empty():
 			_bug_log_entries.append(bug_log_entry)
+		var sm := get_node_or_null("/root/SaveManager")
+		if sm and sm.has_method("unlock_bug_log"):
+			var bug_map := {
+				"Terminal_1": "BUG-01",
+				"Terminal_2": "BUG-02",
+				"Terminal_3": "BUG-03",
+				"Terminal_4": "BUG-04"
+			}
+			if bug_map.has(terminal_id):
+				sm.call("unlock_bug_log", bug_map[terminal_id])
 
 	var next_msg := ""
 	match terminal_id:
@@ -711,6 +747,9 @@ func _on_level_completed() -> void:
 	if _level_completed:
 		return
 	_level_completed = true
+	var sm := get_node_or_null("/root/SaveManager")
+	if sm and sm.has_method("record_level_completion"):
+		sm.call("record_level_completion", "world_1_level_1")
 	_update_hud_display("SELAMAT! Level 1: Syntax Shore berhasil diselesaikan!")
 	_toggle_bug_log_modal(true)
 

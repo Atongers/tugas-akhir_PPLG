@@ -153,6 +153,74 @@
       "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
       "license": "project-internal",
       "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/sprites/characters/dex_skin_default.png",
+      "category": "character",
+      "size_px": [256, 192],
+      "frame_px": [32, 32],
+      "grid": [8, 6],
+      "frames": 24,
+      "skin_id": "cyan_debugger",
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/sprites/characters/dex_skin_volt_scout.png",
+      "category": "character",
+      "size_px": [256, 192],
+      "frame_px": [32, 32],
+      "grid": [8, 6],
+      "frames": 24,
+      "skin_id": "volt_scout",
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/sprites/characters/dex_skin_plasma_sentinel.png",
+      "category": "character",
+      "size_px": [256, 192],
+      "frame_px": [32, 32],
+      "grid": [8, 6],
+      "frames": 24,
+      "skin_id": "plasma_sentinel",
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/ui/skins/dex_skin_portraits.png",
+      "category": "ui",
+      "size_px": [192, 64],
+      "frame_px": [64, 64],
+      "frames": 3,
+      "variants": ["cyan_debugger", "volt_scout", "plasma_sentinel"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/ui/skins/dex_skin_badges.png",
+      "category": "ui",
+      "size_px": [64, 16],
+      "frame_px": [16, 16],
+      "frames": 4,
+      "icons": ["cyan_debugger", "volt_scout", "plasma_sentinel", "locked"],
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
+    },
+    {
+      "path": "res://assets/sprites/vfx/vfx_sprint_trail.png",
+      "category": "vfx",
+      "size_px": [64, 16],
+      "frame_px": [16, 16],
+      "frames": 4,
+      "source": { "kind": "procedural_pixel_art", "tool": "python-pillow" },
+      "license": "project-internal",
+      "technical_checks_passed": true
     }
   ]
 }

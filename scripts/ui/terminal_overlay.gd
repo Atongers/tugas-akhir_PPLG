@@ -17,6 +17,7 @@ var _lint_rtl: RichTextLabel = null
 var _run_btn: Button = null
 var _reset_btn: Button = null
 var _hint_btn: Button = null
+var _insert_print_btn: Button = null
 var _speed_1x_btn: Button = null
 var _speed_2x_btn: Button = null
 var _speed_skip_btn: Button = null
@@ -91,6 +92,7 @@ func open_terminal(terminal_id: String, config: Dictionary, total_terminals: int
 	_code_edit.text = code_to_show
 	_suppress_text_change = false
 	_clear_line_highlights()
+	_refresh_tool_gating()
 
 	var hint_lvl: int = int(_hint_levels.get(terminal_id, 0))
 	_update_hint_display(hint_lvl)
@@ -507,6 +509,12 @@ func _build_ui() -> void:
 	_hint_btn.pressed.connect(_on_hint_pressed)
 	footer_hbox.add_child(_hint_btn)
 
+	_insert_print_btn = Button.new()
+	_insert_print_btn.text = "+ print()"
+	_insert_print_btn.custom_minimum_size = Vector2(115, 36)
+	_insert_print_btn.pressed.connect(_on_insert_print_pressed)
+	footer_hbox.add_child(_insert_print_btn)
+
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer_hbox.add_child(spacer)
@@ -533,6 +541,46 @@ func _build_ui() -> void:
 	_speed_skip_btn.toggle_mode = true
 	_speed_skip_btn.pressed.connect(func(): _set_speed(0.0, _speed_skip_btn))
 	footer_hbox.add_child(_speed_skip_btn)
+
+	_refresh_tool_gating()
+
+
+func _refresh_tool_gating() -> void:
+	var sm := get_node_or_null("/root/SaveManager")
+	var has_print_tool: bool = sm.call("is_tool_unlocked", "print_tool") if sm else false
+	var has_speed_tool: bool = sm.call("is_tool_unlocked", "speed_selector") if sm else false
+
+	if is_instance_valid(_insert_print_btn):
+		_insert_print_btn.disabled = not has_print_tool
+		_insert_print_btn.text = "+ print()" if has_print_tool else "🔒 + print()"
+		_insert_print_btn.tooltip_text = "Sisipkan template print(variabel) di baris kursor" if has_print_tool else "Tamatkan Level 2 untuk membuka Quick-Insert Print Tool"
+
+	if is_instance_valid(_speed_2x_btn):
+		_speed_2x_btn.disabled = not has_speed_tool
+		_speed_2x_btn.text = "2x" if has_speed_tool else "🔒 2x"
+		_speed_2x_btn.tooltip_text = "Kecepatan eksekusi 2x" if has_speed_tool else "Tamatkan Level 3 untuk membuka Kecepatan Eksekusi 2x/Skip"
+
+	if is_instance_valid(_speed_skip_btn):
+		_speed_skip_btn.disabled = not has_speed_tool
+		_speed_skip_btn.text = "Skip" if has_speed_tool else "🔒 Skip"
+		_speed_skip_btn.tooltip_text = "Lewati animasi eksekusi baris" if has_speed_tool else "Tamatkan Level 3 untuk membuka Kecepatan Eksekusi 2x/Skip"
+
+	if not has_speed_tool and is_instance_valid(_speed_1x_btn):
+		_set_speed(0.42, _speed_1x_btn)
+
+
+func _on_insert_print_pressed() -> void:
+	if not is_instance_valid(_code_edit):
+		return
+	var line_idx := _code_edit.get_caret_line()
+	var line_text := _code_edit.get_line(line_idx)
+	var template := "print(variabel)"
+	if line_text.strip_edges().is_empty():
+		_code_edit.set_line(line_idx, template)
+	else:
+		_code_edit.insert_line_at(line_idx + 1, template)
+		_code_edit.set_caret_line(line_idx + 1)
+	_code_edit.grab_focus()
 
 
 func _make_sub_panel() -> PanelContainer:

@@ -8,13 +8,10 @@ signal player_damaged(amount: float, source: String)
 signal player_died()
 signal player_respawned()
 
-const SPRITESHEET_PATH := "res://assets/sprites/characters/characters.png"
+const DEFAULT_SKIN_PATH := "res://assets/sprites/characters/dex_skin_default.png"
 const VFX_DUST_PATH := "res://assets/sprites/vfx/vfx_dust_cyan.png"
-## Row 2 in 1-based numbering (index 1: Cyan Antenna Bot)
-const DEX_ROW_INDEX: int = 1
-const FRAME_Y_START: int = DEX_ROW_INDEX * 32 - 2
-const FRAME_HEIGHT: int = 32
-const WALK_FRAME_COUNT: int = 8
+const VFX_SPRINT_TRAIL_PATH := "res://assets/sprites/vfx/vfx_sprint_trail.png"
+const CELL_SIZE: int = 32
 
 @export_group("Movement Physics")
 @export var move_speed: float = 95.0
@@ -47,8 +44,12 @@ var _coyote_timer: float = 0.0
 var _jump_buffer_timer: float = 0.0
 var _was_on_floor: bool = false
 var _sprint_dust_timer: float = 0.0
+var _hurt_anim_timer: float = 0.0
 var _camera_trauma: float = 0.0
 var _hit_flash_timer: float = 0.0
+var _trail_color: Color = Color("#38bdf8")
+var _trail_frames: Array[AtlasTexture] = []
+var _trail_frame_idx: int = 0
 
 @onready var anim_sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var camera_2d: Camera2D = get_node_or_null("Camera2D")
@@ -59,7 +60,12 @@ func _ready() -> void:
 	checkpoint_position = global_position
 	health = max_health
 	energy = max_energy
+	_load_sprint_trail_frames()
 	_setup_dex_sprite_frames()
+	if not Engine.is_editor_hint() and has_node("/root/SaveManager"):
+		var sm := get_node("/root/SaveManager")
+		if sm.has_signal("skin_changed") and not sm.skin_changed.is_connected(_on_skin_changed):
+			sm.skin_changed.connect(_on_skin_changed)
 	health_changed.emit(health, max_health)
 	energy_changed.emit(energy, max_energy)
 
@@ -153,16 +159,19 @@ func _physics_process(delta: float) -> void:
 		VfxBurst.spawn_burst(get_parent(), VFX_DUST_PATH, global_position, 3, 22.0, -14.0)
 	_was_on_floor = is_on_floor()
 
-	# Sprint dust VFX
+	# Sprint trail VFX (vfx_sprint_trail.png tinted per active skin)
 	if is_sprinting and is_on_floor():
 		_sprint_dust_timer -= delta
 		if _sprint_dust_timer <= 0.0:
-			_sprint_dust_timer = 0.16
-			VfxBurst.spawn_burst(get_parent(), VFX_DUST_PATH, global_position, 2, 16.0, -10.0)
+			_sprint_dust_timer = 0.075
+			_spawn_sprint_trail()
 	else:
 		_sprint_dust_timer = 0.0
 
-	_update_animation(direction)
+	if _hurt_anim_timer > 0.0:
+		_hurt_anim_timer = maxf(0.0, _hurt_anim_timer - delta)
+
+	_update_animation(direction, is_sprinting)
 
 	# Safe respawn at checkpoint if falling out of bounds
 	if global_position.y > 500.0:
@@ -183,6 +192,7 @@ func take_damage(amount: float, source: String = "") -> void:
 	health = maxf(0.0, health - amount)
 	is_invulnerable = true
 	_iframe_timer = iframe_duration
+	_hurt_anim_timer = 0.25
 	if not VfxBurst.reduce_flash:
 		_hit_flash_timer = 0.09
 	velocity.y = -120.0
@@ -224,17 +234,54 @@ func respawn_at_checkpoint() -> void:
 	player_respawned.emit()
 
 
-func _update_animation(direction: float) -> void:
+func _update_animation(direction: float, is_sprinting: bool = false) -> void:
 	if not anim_sprite or not anim_sprite.sprite_frames:
 		return
 	var target_anim := "idle"
-	if not is_on_floor():
+	if _hurt_anim_timer > 0.0:
+		target_anim = "hurt"
+	elif not is_on_floor():
 		target_anim = "jump" if velocity.y < 0.0 else "fall"
 	elif not is_zero_approx(direction):
-		target_anim = "walk"
+		target_anim = "sprint" if is_sprinting else "walk"
 
 	if anim_sprite.animation != target_anim or not anim_sprite.is_playing():
 		anim_sprite.play(target_anim)
+
+
+func _on_skin_changed(_skin_id: String) -> void:
+	_setup_dex_sprite_frames()
+
+
+func _load_sprint_trail_frames() -> void:
+	_trail_frames.clear()
+	if not ResourceLoader.exists(VFX_SPRINT_TRAIL_PATH):
+		return
+	var tex: Texture2D = load(VFX_SPRINT_TRAIL_PATH)
+	if not tex:
+		return
+	for i in range(4):
+		_trail_frames.append(_make_atlas(tex, i * 16, 0, 16, 16))
+
+
+func _spawn_sprint_trail() -> void:
+	if _trail_frames.is_empty() or not get_parent():
+		return
+	var sp := Sprite2D.new()
+	sp.texture = _trail_frames[_trail_frame_idx % _trail_frames.size()]
+	_trail_frame_idx += 1
+	sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sp.modulate = _trail_color
+	var facing_sign := -1.0 if (anim_sprite and anim_sprite.flip_h) else 1.0
+	sp.flip_h = facing_sign < 0.0
+	sp.global_position = global_position + Vector2(-facing_sign * 8.0, -7.0)
+	sp.z_index = z_index - 1
+	get_parent().add_child(sp)
+	var tw := sp.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(sp, "modulate:a", 0.0, 0.20)
+	tw.tween_property(sp, "position:y", sp.position.y - 4.0, 0.20)
+	tw.chain().tween_callback(sp.queue_free)
 
 
 func _setup_dex_sprite_frames() -> void:
@@ -243,7 +290,19 @@ func _setup_dex_sprite_frames() -> void:
 	if not anim_sprite:
 		return
 
-	var tex: Texture2D = load(SPRITESHEET_PATH)
+	var sheet_path := DEFAULT_SKIN_PATH
+	_trail_color = Color("#38bdf8")
+	if not Engine.is_editor_hint() and has_node("/root/SaveManager"):
+		var sm := get_node("/root/SaveManager")
+		var meta: Dictionary = sm.call("get_skin_metadata", sm.get("active_skin"))
+		sheet_path = str(meta.get("sheet_path", DEFAULT_SKIN_PATH))
+		var tc: Variant = meta.get("trail_color", Color("#38bdf8"))
+		if tc is Color:
+			_trail_color = tc
+
+	var tex: Texture2D = load(sheet_path)
+	if not tex:
+		tex = load(DEFAULT_SKIN_PATH)
 	if not tex:
 		return
 
@@ -251,34 +310,27 @@ func _setup_dex_sprite_frames() -> void:
 	if frames.has_animation("default"):
 		frames.remove_animation("default")
 
-	# Idle animation (columns 0..3)
-	frames.add_animation("idle")
-	frames.set_animation_loop("idle", true)
-	frames.set_animation_speed("idle", 6.0)
-	for col in range(4):
-		frames.add_frame("idle", _make_atlas(tex, 2 + col * 16, FRAME_Y_START, 16, FRAME_HEIGHT))
-
-	# Walk animation (columns 5..12)
-	frames.add_animation("walk")
-	frames.set_animation_loop("walk", true)
-	frames.set_animation_speed("walk", 10.0)
-	for i in range(WALK_FRAME_COUNT):
-		var col := 5 + i
-		frames.add_frame("walk", _make_atlas(tex, 2 + col * 16, FRAME_Y_START, 16, FRAME_HEIGHT))
-
-	# Jump & Fall poses
-	frames.add_animation("jump")
-	frames.set_animation_loop("jump", false)
-	frames.set_animation_speed("jump", 5.0)
-	frames.add_frame("jump", _make_atlas(tex, 2 + 6 * 16, FRAME_Y_START, 16, FRAME_HEIGHT))
-
-	frames.add_animation("fall")
-	frames.set_animation_loop("fall", false)
-	frames.set_animation_speed("fall", 5.0)
-	frames.add_frame("fall", _make_atlas(tex, 2 + 8 * 16, FRAME_Y_START, 16, FRAME_HEIGHT))
+	var specs := [
+		{"name": "idle", "row": 0, "count": 4, "fps": 6.0, "loop": true},
+		{"name": "walk", "row": 1, "count": 8, "fps": 10.0, "loop": true},
+		{"name": "sprint", "row": 2, "count": 6, "fps": 14.0, "loop": true},
+		{"name": "jump", "row": 3, "count": 2, "fps": 8.0, "loop": false},
+		{"name": "fall", "row": 4, "count": 2, "fps": 8.0, "loop": false},
+		{"name": "hurt", "row": 5, "count": 2, "fps": 10.0, "loop": false},
+	]
+	for spec in specs:
+		var anim_name: String = str(spec["name"])
+		var row_idx: int = int(spec["row"])
+		var count: int = int(spec["count"])
+		frames.add_animation(anim_name)
+		frames.set_animation_loop(anim_name, bool(spec["loop"]))
+		frames.set_animation_speed(anim_name, float(spec["fps"]))
+		for col in range(count):
+			frames.add_frame(anim_name, _make_atlas(tex, col * CELL_SIZE, row_idx * CELL_SIZE, CELL_SIZE, CELL_SIZE))
 
 	anim_sprite.sprite_frames = frames
-	anim_sprite.offset = Vector2(0.0, -FRAME_HEIGHT * 0.5)
+	anim_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	anim_sprite.offset = Vector2(0.0, -16.0)
 	anim_sprite.play("idle")
 
 

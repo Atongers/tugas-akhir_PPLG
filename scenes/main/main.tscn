@@ -1,7 +1,14 @@
 [gd_scene format=3 uid="uid://c8k5b2rqqh7xl"]
 
-[ext_resource type="PackedScene" uid="uid://byjtu6utih6fh" path="res://scenes/levels/world_1_syntax_shore/level_1.tscn" id="1_hyk8p"]
+[ext_resource type="PackedScene" uid="uid://dmau2f6e7kq4y" path="res://scenes/ui/menus/main_menu.tscn" id="1_menu"]
 
-[node name="Main" type="Node2D" unique_id=1209819327]
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="World1Level1" parent="." unique_id=793436952 instance=ExtResource("1_hyk8p")]
+[node name="MainMenu" parent="." instance=ExtResource("1_menu")]
+layout_mode = 1
